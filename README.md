@@ -14,3 +14,4 @@ CPU specs: Ryzen 7 260, 8 core
 * sorting a list to help with branch prediction
 * false sharing messing with concurrency
 * maybe LTO
+* random number generator vs inbuilt
