@@ -2,8 +2,8 @@
 
 #include <x86intrin.h>
 #include <cstdint>
-#include <cassert>
-
+#include <cpuid.h>
+#include <stdexcept>
 // A singleton because multiple timers shouldn't exist and singletons are fun
 // Header only to allow inlining of the whole class
 class Timer
@@ -22,29 +22,28 @@ public:
 
     // Starts the timer, a timer can not be started again when its already going
     void startTimer() {
-        assert(!isTiming && "Can't have multiple timers going at once");
+        if (isTiming) throw std::runtime_error("Can't have multiple timers going at once");
 
         isTiming = true;
-        // load fence ensures all previous instructions completed before 
-        // it starts the timer 
-        _mm_lfence();
+        unsigned int aux;
+        // Serialize to avoid out-of-order effects
+        __cpuid(0, aux, aux, aux, aux);
         startTime = __rdtsc();
     }
 
     // Ends the timer returning the number of clock cycles the timer lasted
-    uint64_t endTimer() {
-        // used by __rdtscp to store some auxiliary info
+    [[nodiscard]] uint64_t endTimer() {
         unsigned int aux;
-        // reads the processor's time stamp counter (in cpu cycles)
+        // rdtscp is partially serializing; follow with cpuid
         uint64_t endTime{ __rdtscp(&aux) };
-        // load fence ensures all previous instruction completed
-        // so that this only executes when everything its benchmarking is done
-        _mm_lfence();
+        __cpuid(0, aux, aux, aux, aux);
 
-        assert(isTiming && "Can't end a timer that hasn't started");
+        if (!isTiming) throw std::runtime_error("Can't end a timer that hasn't started");
+        isTiming = false; 
 
         // technically doesn't "detect it" but it'd take 100 years+ to do more than 2^64 cycles
-        assert(endTime > startTime && "64 bit unsigned integer overflow, time to get a lottery ticket");
+        // shouldn't ever trigger since turning on the laptop restarts it at 0 but feel like it should be there
+        if (endTime < startTime) throw std::runtime_error("64 bit unsigned integer overflow somehow?");
 
         return endTime - startTime;
     }
