@@ -9,7 +9,18 @@ namespace benchmarks {
 
 class BranchPredictionUnsorted : public Benchable {
 public:
-    BranchPredictionUnsorted(size_t listSize) {
+    BranchPredictionUnsorted(size_t listSize) 
+        : listSize{ listSize }
+    {
+        resetBenchmark();
+    }
+
+    // returns a reference to random numbers
+    std::vector<double>& getInternalNumbersVector() {
+        return randomNumbers;
+    }
+
+    void resetBenchmark() override {
         // get a random seed from the hardware
         std::random_device rd;
 
@@ -21,11 +32,6 @@ public:
         for (size_t i{}; i < randomNumbers.size(); ++i) {
             randomNumbers[i] = distrib(randomNumberGenerator);
         }
-    }
-
-    // returns a reference to random numbers
-    std::vector<double>& getInternalNumbersVector() {
-        return randomNumbers;
     }
 
     void runBenchmark(size_t iterations) override {
@@ -43,6 +49,7 @@ public:
 
 private:
     std::vector<double> randomNumbers;
+    const size_t listSize;
     static constexpr double DISTRIBUTION_MAX{100};
     static constexpr double DISTRIBUTION_MIN{0};
     static constexpr double SIZE_NEEDED_FOR_SUCCESS{0};

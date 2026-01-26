@@ -16,6 +16,13 @@ public:
         std::vector<double>& numbers{BranchPredictionUnsorted::getInternalNumbersVector()};
         std::sort(numbers.begin(), numbers.end());
     }
+
+    void resetBenchmark() {
+        // call base reset benchmark getting new random numbers
+        BranchPredictionUnsorted::resetBenchmark();
+        std::vector<double>& numbers{BranchPredictionUnsorted::getInternalNumbersVector()};
+        std::sort(numbers.begin(), numbers.end());
+    }
 };
 
 }
