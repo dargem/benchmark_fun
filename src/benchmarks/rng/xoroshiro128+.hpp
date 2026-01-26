@@ -29,6 +29,10 @@ public:
         }
     }
 
+    void resetBenchmark() override {
+        jump();
+    }
+
     void printNextDouble() {
         // just in case so its impossible to prove that internal state doesn't matter
         std::cout << getRandomDouble();
@@ -67,6 +71,31 @@ private:
         result = (result ^ (result >> 27)) * 0x94D049BB133111EBULL;
         return result ^ (result >> 31);
     };
+
+    /* This is the jump function for the generator. It is equivalent
+    to 2^64 calls to next(); it can be used to generate 2^64
+    non-overlapping subsequences for parallel computations. */
+
+    void jump() 
+    {
+        static const std::array<uint64_t, 2> JUMP = { 0xdf900294d8f554a5, 0x170865df4b3201fc };
+
+        uint64_t state0 = 0;
+        uint64_t state1 = 0;
+        for(const auto& jump_val : JUMP)
+        {
+            for(int bit_idx = 0; bit_idx < 64; bit_idx++) {
+                if ((jump_val & (UINT64_C(1) << bit_idx)) != 0) {
+                    state0 ^= state[0];
+                    state1 ^= state[1];
+                }
+                std::ignore = getRandomDouble();
+            }
+        }
+
+        state[0] = state0;
+        state[1] = state1;
+    }
 
     // used to store internal state of RNG
     std::array<uint64_t, 2> state;
