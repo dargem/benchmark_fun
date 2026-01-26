@@ -10,4 +10,4 @@ public:
     virtual void runBenchmark(size_t iterations) = 0;
 };
 
-};
+}

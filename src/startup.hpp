@@ -23,4 +23,4 @@ void pin_thread(int core_id) {
     }
 }
 
-};
+}

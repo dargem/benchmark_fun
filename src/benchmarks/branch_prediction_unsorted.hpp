@@ -48,4 +48,4 @@ private:
     static constexpr double SIZE_NEEDED_FOR_SUCCESS{0};
 };
 
-};
+}
