@@ -49,7 +49,7 @@ public:
     }
     
 private:
-    Timer(); // private construction
+    Timer() = default; // private construction
     bool isTiming{ false };
     uint64_t startTime;
 };

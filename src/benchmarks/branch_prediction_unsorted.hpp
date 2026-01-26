@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstddef>
-#include "benchmarks/benchable.hpp"
+#include "src/benchmarks/benchable.hpp"
 #include <vector>
 #include <random>
 
@@ -28,7 +28,7 @@ public:
         return randomNumbers;
     }
 
-    void runBenchmark(size_t iterations) const override {
+    void runBenchmark(size_t iterations) override {
         size_t successes{};
         for (size_t i{}; i < iterations; ++i) {
             for (double number : randomNumbers) {
