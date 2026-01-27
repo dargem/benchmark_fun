@@ -23,8 +23,15 @@ target_include_directories(prefetcher_benchmarks PRIVATE
 
 target_compile_features(prefetcher_benchmarks PRIVATE cxx_std_17)
 
-if(MSVC)
-    target_compile_options(prefetcher_benchmarks PRIVATE /W4 /permissive-)
-else()
-    target_compile_options(prefetcher_benchmarks PRIVATE -Wall -Wextra -Wpedantic)
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(prefetcher_benchmarks PRIVATE
+        -O3
+        -march=native
+        -mtune=native
+        -funroll-loops
+    )
+
+    target_link_options(prefetcher_benchmarks PRIVATE
+        -flto
+    )
 endif()

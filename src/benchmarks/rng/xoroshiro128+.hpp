@@ -9,6 +9,7 @@
 
 namespace benchmarks {
 
+template<bool isObservable>
 class Xoroshiro128plus : public Benchable
 {
 public:
@@ -34,8 +35,10 @@ public:
     }
 
     void printNextDouble() {
-        // just in case so its impossible to prove that internal state doesn't matter
-        std::cout << getRandomDouble();
+        if constexpr (isObservable) {
+            // just in case so its impossible to prove that internal state doesn't matter
+            std::cout << getRandomDouble() << std::endl;
+        }
     }
 
 private:
