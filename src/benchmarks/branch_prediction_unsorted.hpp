@@ -4,6 +4,7 @@
 #include "src/benchmarks/benchable.hpp"
 #include <vector>
 #include <random>
+#include <string_view>
 
 namespace benchmarks {
 
@@ -47,7 +48,12 @@ public:
         asm volatile("" : : "r"(successes) : "memory");
     }
 
+    std::string_view getName() override {
+        return NAME;
+    }
+
 private:
+    static constexpr std::string_view NAME{"Branch Prediction Unsorted Version"};
     std::vector<double> randomNumbers;
     const size_t listSize;
     static constexpr double DISTRIBUTION_MAX{100};

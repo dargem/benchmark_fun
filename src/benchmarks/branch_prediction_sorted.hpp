@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <vector>
 #include <algorithm>
+#include <string_view>
 
 namespace benchmarks {
   
@@ -23,6 +24,13 @@ public:
         std::vector<double>& numbers{BranchPredictionUnsorted::getInternalNumbersVector()};
         std::sort(numbers.begin(), numbers.end());
     }
+
+    std::string_view getName() override {
+        return NAME;
+    }
+
+private:
+    static constexpr std::string_view NAME{"Branch Prediction Sorted Version"};
 };
 
 }

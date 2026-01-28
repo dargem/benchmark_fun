@@ -8,6 +8,7 @@ CPU specs: Ryzen 7 260, 8 core
 * l3 16 mb shared
 
 # plans
+* benchrunner which can output some proper statistics for comparison
 * prefetcher stuff with contiguous memory access graphic latency vs different working sizes, compare against linked list pointer chasing
 * array of structures vs structure of arrays
 * simd/vectorisation falls into SOA kinda

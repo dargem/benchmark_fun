@@ -5,6 +5,10 @@
 
 namespace benchmarks {
 
+struct Benchmark {
+    
+};
+
 // class for running benchmarks
 // also a singleton because I like singletons and its tightly linked to the timer singleton
 // so there shouldn't be multiple bench runners at a time as the current timing method doesn't allow it
@@ -21,16 +25,22 @@ public:
     void operator=(const BenchRunner&) = delete; // no copy assignment
     void operator=(BenchRunner&&) = delete; // no move assignment
 
-    void addBenchable(Benchable& benchable) {
+    // Move ownership of the benchable to the bench runner
+    void addBenchable(Benchable&& benchable) {
         benchables.push_back(benchable);
     }
 
     void clearBenchables() {
         benchables.clear();
     }
+
+    void runBenchmarks() {
+
+    }
 private:
+
     BenchRunner() = default;
-    std::vector<Benchable&> benchables;
+    std::vector<Benchable> benchables;
 };
 
 }

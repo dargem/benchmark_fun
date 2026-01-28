@@ -6,6 +6,7 @@
 #include <cstddef>
 #include "src/benchmarks/benchable.hpp"
 #include <iostream>
+#include <string_view>
 
 namespace benchmarks {
 
