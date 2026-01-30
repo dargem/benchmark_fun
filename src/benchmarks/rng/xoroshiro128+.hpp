@@ -42,6 +42,13 @@ public:
         }
     }
 
+    std::string_view getName() override {
+        if constexpr (isObservable) {
+            return OBSERVABLE_NAME;
+        } else {
+            return UNOBSERVABLE_NAME;
+        }
+    }
 private:
     /**
      * @brief creates a random uniform double between [0,1)
@@ -103,6 +110,8 @@ private:
 
     // used to store internal state of RNG
     std::array<uint64_t, 2> state;
+    constexpr static std::string_view OBSERVABLE_NAME{"Potentially observable Xoroshiro RNG"};
+    constexpr static std::string_view UNOBSERVABLE_NAME{"Unobservable Xoroshiro RNG"};
 };
 
 }

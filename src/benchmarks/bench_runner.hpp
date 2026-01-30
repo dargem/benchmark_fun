@@ -38,7 +38,6 @@ public:
 
     }
 private:
-
     BenchRunner() = default;
     std::vector<Benchable> benchables;
 };
