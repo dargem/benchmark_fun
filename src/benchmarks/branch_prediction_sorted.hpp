@@ -11,7 +11,7 @@ namespace benchmarks {
 class BranchPredictionSorted : public BranchPredictionUnsorted {
 public:
     BranchPredictionSorted(size_t listSize) 
-        : BranchPredictionUnsorted(listSize)
+        : BranchPredictionUnsorted(listSize, NAME)
     {
         // On construction just sort the numbers of parent lazy way to do this
         std::vector<double>& numbers{BranchPredictionUnsorted::getInternalNumbersVector()};
@@ -23,10 +23,6 @@ public:
         BranchPredictionUnsorted::resetBenchmark();
         std::vector<double>& numbers{BranchPredictionUnsorted::getInternalNumbersVector()};
         std::sort(numbers.begin(), numbers.end());
-    }
-
-    std::string_view getName() override {
-        return NAME;
     }
 
 private:

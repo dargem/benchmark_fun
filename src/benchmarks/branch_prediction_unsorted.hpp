@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include "src/benchmarks/benchable.hpp"
+#include "src/benchmarks/bench_types.hpp"
 #include <vector>
 #include <random>
 #include <string_view>
@@ -10,8 +11,17 @@ namespace benchmarks {
 
 class BranchPredictionUnsorted : public Benchable {
 public:
+
+    BranchPredictionUnsorted(size_t listSize, std::string_view name)
+        : Benchable(BenchType::BRANCH_PREDICTION, name),
+        listSize{ listSize }
+    {
+        resetBenchmark();
+    }
+        
     BranchPredictionUnsorted(size_t listSize) 
-        : listSize{ listSize }
+        : Benchable(BenchType::BRANCH_PREDICTION, NAME), 
+        listSize{ listSize }
     {
         resetBenchmark();
     }
@@ -46,10 +56,6 @@ public:
         }
         // tell compiler this is volatile this benchmark from being optimized away by the compiler
         asm volatile("" : : "r"(successes) : "memory");
-    }
-
-    std::string_view getName() override {
-        return NAME;
     }
 
 private:
