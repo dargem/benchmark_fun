@@ -5,7 +5,9 @@
 #include <math.h>
 #include <iostream>
 #include <format>
+#include <memory>
 #include "src/benchmarks/benchable.hpp"
+#include "src/timer.hpp"
 #include <boost/math/distributions/students_t.hpp>
 
 
@@ -30,6 +32,14 @@ struct Evaluation {
         const double margin{ tScore * standardDeviation / std::sqrt(static_cast<double>(numTests)) };
         lowerConfidenceInterval = meanCycles - margin;
         upperConfidenceInterval = meanCycles + margin;
+    }
+
+    void print() {
+        std::cout << "---Summary statistics for " << name << "---"
+                  << "\nSample mean cycles per test: " << meanCycles 
+                  << "\nConfidence interval: " << lowerConfidenceInterval << "-" << upperConfidenceInterval
+                  << "\nSample standard deviation: " << standardDeviation 
+                  << "\nTests used: " << numTests << std::endl; 
     }
 
     const std::string_view name;
@@ -81,7 +91,7 @@ struct Benchmark {
 
     
     const std::string_view name;
-    std::vector<const size_t> clockTimes;
+    std::vector<size_t> clockTimes;
 };
 
 class BenchmarkCollection {
@@ -105,6 +115,7 @@ public:
 
         for (Benchmark bench : benchmarks) {
             evaluations.push_back(bench.createEvaluation());
+            evaluations.back().print();
         }
     }
 
@@ -135,25 +146,30 @@ public:
     void operator=(BenchRunner&&) = delete; // no move assignment
 
     // Move ownership of the benchable to the bench runner
-    void addBenchable(Benchable&& newBenchable) {
-        for (Benchable& benchable : benchables) {
+    void addBenchable(std::unique_ptr<Benchable> newBenchable) {
+        for (const auto& benchable : benchables) {
             if (typeid(benchable) == typeid(newBenchable)) {
                 throw std::runtime_error("Shouldn't have two of the same benchables");
             }
         }
-        benchables.push_back(newBenchable);
+        benchables.push_back(std::move(newBenchable));
     }
 
     void clearBenchables() {
         benchables.clear();
     }
 
-    void runBenchmarks() {
-
+    void runBenchmarks(size_t iterations) {
+        for (const auto& bench : benchables) {
+            timer.startTimer();
+            bench->runBenchmark(iterations);
+            //size_t cycles{timer.endTimer()};
+        }
     }
 private:
     BenchRunner() = default;
-    std::vector<Benchable> benchables;
+    Timer& timer = Timer::getInstance();
+    std::vector<std::unique_ptr<Benchable>> benchables;
 };
 
 }
