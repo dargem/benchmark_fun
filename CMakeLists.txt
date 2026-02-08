@@ -30,6 +30,12 @@ target_include_directories(benchmarks PRIVATE
     ${ALL_DIRS}
 )
 
+if(POLICY CMP0167)
+    cmake_policy(SET CMP0167 NEW)
+endif()
+find_package(Boost REQUIRED)
+target_link_libraries(benchmarks PRIVATE Boost::boost)
+
 target_compile_features(benchmarks PRIVATE cxx_std_20)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")

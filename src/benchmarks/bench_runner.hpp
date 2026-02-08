@@ -6,6 +6,9 @@
 #include <iostream>
 #include <format>
 #include "src/benchmarks/benchable.hpp"
+#include <boost/math/distributions/students_t.hpp>
+
+
 namespace benchmarks {
 
 constexpr static size_t NUMBER_CLT_TESTS_NEEDED{ 30 };
@@ -18,6 +21,15 @@ struct Evaluation {
         if (numTests < NUMBER_CLT_TESTS_NEEDED) {
             throw new std::runtime_error(std::format("More tests need for central limit theorem, needed {} has {}", NUMBER_CLT_TESTS_NEEDED, numTests));
         }
+
+        // use central limit theorem to create a confidence interval for the true mean using t distribution
+        
+        // confidence interval is x_bar ± t * (s / sqrt(n))
+        boost::math::students_t dist(numTests - 1);
+        const double tScore{ boost::math::quantile(dist, 1.0 - ALPHA / 2.0) };
+        const double margin{ tScore * standardDeviation / std::sqrt(static_cast<double>(numTests)) };
+        lowerConfidenceInterval = meanCycles - margin;
+        upperConfidenceInterval = meanCycles + margin;
     }
 
     const std::string_view name;
@@ -32,9 +44,9 @@ struct Evaluation {
     const size_t numTests;
 
     // confidence interval made using CONFIDENCE_ALPHA global variable
-    constexpr static double CONFIDENCE_ALPHA{ 0.05 };
-    const double lowerConfidenceInterval;
-    const double upperConfidenceInterval;
+    constexpr static double ALPHA{ 0.05 };
+    double lowerConfidenceInterval;
+    double upperConfidenceInterval;
 };
 
 struct Benchmark {
