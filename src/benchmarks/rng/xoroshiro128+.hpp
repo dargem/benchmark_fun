@@ -42,14 +42,6 @@ public:
             std::cout << getRandomDouble() << std::endl;
         }
     }
-
-    std::string_view getName() override {
-        if constexpr (isObservable) {
-            return OBSERVABLE_NAME;
-        } else {
-            return UNOBSERVABLE_NAME;
-        }
-    }
 private:
     /**
      * @brief creates a random uniform double between [0,1)

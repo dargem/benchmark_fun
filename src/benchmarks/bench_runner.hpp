@@ -153,6 +153,9 @@ public:
             if (typeid(benchable) == typeid(newBenchable)) {
                 throw std::runtime_error("Shouldn't have two of the same benchables");
             }
+            if (benchable->getBenchType() != newBenchable->getBenchType()) {
+                throw std::runtime_error("Benchmark shouldn't compare benchables of different types");
+            }
         }
         benchables.push_back(std::move(newBenchable));
     }

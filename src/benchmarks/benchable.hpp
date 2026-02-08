@@ -18,13 +18,22 @@ public:
     // call to run the benchmark for the number of iterations
     virtual void runBenchmark(size_t iterations) = 0;
 
-    bool operator==(const Benchable& other) {
+    bool operator==(const Benchable& other) const {
         return name == other.name;
     }
 
-    bool isCompatableType(const Benchable& other) {
+    bool isCompatableType(const Benchable& other) const {
         return benchType == other.benchType;
     }
+
+    std::string_view getName() const {
+        return name;
+    }
+ 
+    BenchType getBenchType() const {
+        return benchType;
+    }
+
 private:
     const BenchType benchType;
     const std::string_view name;
