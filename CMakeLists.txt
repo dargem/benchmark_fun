@@ -7,6 +7,10 @@ cmake_minimum_required(VERSION 3.16)
 
 project(benchmarks LANGUAGES CXX)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp" "src/*.hpp")
 list(APPEND SOURCES "main.cpp")
 
@@ -26,7 +30,7 @@ target_include_directories(benchmarks PRIVATE
     ${ALL_DIRS}
 )
 
-target_compile_features(benchmarks PRIVATE cxx_std_17)
+target_compile_features(benchmarks PRIVATE cxx_std_20)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(benchmarks PRIVATE
