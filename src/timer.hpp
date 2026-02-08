@@ -32,10 +32,10 @@ public:
     }
 
     // Ends the timer returning the number of clock cycles the timer lasted
-    [[nodiscard]] uint64_t endTimer() {
+    [[nodiscard]] size_t endTimer() {
         unsigned int aux;
         // rdtscp is partially serializing; follow with cpuid
-        uint64_t endTime{ __rdtscp(&aux) };
+        size_t endTime{ __rdtscp(&aux) };
         __cpuid(0, aux, aux, aux, aux);
 
         if (!isTiming) throw std::runtime_error("Can't end a timer that hasn't started");
@@ -51,5 +51,5 @@ public:
 private:
     Timer() = default; // private construction
     bool isTiming{ false };
-    uint64_t startTime;
+    size_t startTime;
 };

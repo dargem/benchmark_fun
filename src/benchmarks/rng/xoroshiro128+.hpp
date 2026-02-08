@@ -15,7 +15,7 @@ class Xoroshiro128plus : public Benchable
 {
 public:
     // creates and seeds a generator
-    explicit Xoroshiro128plus(uint64_t seed) 
+    explicit Xoroshiro128plus(size_t seed) 
         : Benchable()
     {
         // splitmix64 modifies the seed so this is deterministic with 2 different modified numbers
@@ -56,11 +56,11 @@ private:
      * @return double 
      */
     double getRandomDouble() {
-        const uint64_t state0 = state[0];
-        uint64_t state1 = state[1];
+        const size_t state0 = state[0];
+        size_t state1 = state[1];
 
         // create random number using the internal state
-        const uint64_t result = state0 + state1;
+        const size_t result = state0 + state1;
 
         // mix up the internal state again
         state1 ^= state0;
@@ -72,12 +72,12 @@ private:
     }
 
     // used internally for bitshifting an int
-    static uint64_t rotl(uint64_t value, int shift) {
+    static size_t rotl(size_t value, int shift) {
         return (value << shift) | (value >> (64 - shift));
     };
     
-    static uint64_t splitmix64(uint64_t& seed) {
-        uint64_t result = (seed += 0x9E3779B97F4A7C15ULL);
+    static size_t splitmix64(size_t& seed) {
+        size_t result = (seed += 0x9E3779B97F4A7C15ULL);
         result = (result ^ (result >> 30)) * 0xBF58476D1CE4E5B9ULL;
         result = (result ^ (result >> 27)) * 0x94D049BB133111EBULL;
         return result ^ (result >> 31);
@@ -89,10 +89,10 @@ private:
 
     void jump() 
     {
-        static const std::array<uint64_t, 2> JUMP = { 0xdf900294d8f554a5, 0x170865df4b3201fc };
+        static const std::array<size_t, 2> JUMP = { 0xdf900294d8f554a5, 0x170865df4b3201fc };
 
-        uint64_t state0 = 0;
-        uint64_t state1 = 0;
+        size_t state0 = 0;
+        size_t state1 = 0;
         for(const auto& jump_val : JUMP)
         {
             for(int bit_idx = 0; bit_idx < 64; bit_idx++) {
@@ -109,7 +109,7 @@ private:
     }
 
     // used to store internal state of RNG
-    std::array<uint64_t, 2> state;
+    std::array<size_t, 2> state;
     constexpr static std::string_view OBSERVABLE_NAME{"Potentially observable Xoroshiro RNG"};
     constexpr static std::string_view UNOBSERVABLE_NAME{"Unobservable Xoroshiro RNG"};
 };

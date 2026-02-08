@@ -10,14 +10,30 @@ using benchmarks::Benchable;
 
 
 int main() {
-    BenchRunner& benchRunner = BenchRunner::getInstance();    
+    try {
+        BenchRunner& benchRunner = BenchRunner::getInstance();    
 
 
-    constexpr int ITERATIONS{ 1000000 };
-    constexpr int RNG_SEED{ 50000 };
+        constexpr size_t ITERATIONS{ 1000000 };
+        constexpr size_t NUM_SAMPLES{ 50 };
 
-    std::unique_ptr<Benchable> rng = std::make_unique<Xoroshiro128plus<true>>(RNG_SEED);
-    benchRunner.addBenchable(std::move(rng));
+        
+        constexpr int RNG_SEED{ 50000 };
+
+        std::unique_ptr<Benchable> rng = std::make_unique<Xoroshiro128plus<true>>(RNG_SEED);
+        
+        
+        constexpr size_t LIST_SIZE{ 100000 };
+
+        benchRunner.addBenchable(std::move(rng));
+        benchRunner.runBenchmarks(ITERATIONS, NUM_SAMPLES);
+        benchRunner.printResults();
+        
+
+
+    } catch(const std::runtime_error& e) {
+        std::cout << "Error: " << e.what() << std::endl;
+    }
 
     return 0;
 }

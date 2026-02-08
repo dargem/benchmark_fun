@@ -21,7 +21,10 @@ struct Evaluation {
     {
         // calculate the confidence interval
         if (numTests < NUMBER_CLT_TESTS_NEEDED) {
-            throw new std::runtime_error(std::format("More tests need for central limit theorem, needed {} has {}", NUMBER_CLT_TESTS_NEEDED, numTests));
+            throw std::runtime_error(std::format(
+                "More tests needed for central limit theorem; need {} but have {}",
+                NUMBER_CLT_TESTS_NEEDED,
+                numTests));
         }
 
         // use central limit theorem to create a confidence interval for the true mean using t distribution
@@ -71,7 +74,10 @@ struct Benchmark {
         size_t numTests{ clockTimes.size() };
 
         if (numTests < NUMBER_CLT_TESTS_NEEDED) {
-            std::runtime_error("Not enough tests run for central limit theorem");
+            throw std::runtime_error(std::format(
+                "Not enough tests run for central limit theorem; need {} but have {}",
+                NUMBER_CLT_TESTS_NEEDED,
+                numTests));
         }
 
         double totalCycles{};
@@ -97,7 +103,7 @@ struct Benchmark {
 class BenchmarkCollection {
 public:
     void addTime(std::string_view name, size_t timeTaken) {
-        for (Benchmark bench : benchmarks) {
+        for (Benchmark& bench : benchmarks) {
             if (bench.name == name) {
                 bench.clockTimes.push_back(timeTaken);
                 return;
@@ -121,10 +127,6 @@ public:
 
 private:
     std::vector<Benchmark> benchmarks;
-
-    void printEvaluation(Evaluation evaluation) {
-
-    }
 };
 
 
@@ -159,17 +161,32 @@ public:
         benchables.clear();
     }
 
-    void runBenchmarks(size_t iterations) {
-        for (const auto& bench : benchables) {
-            timer.startTimer();
-            bench->runBenchmark(iterations);
-            //size_t cycles{timer.endTimer()};
+    void runBenchmarks(size_t iterations, size_t numSamples) {
+        for (size_t i{}; i < numSamples; ++i) {
+            // Take numSamples samples for each bench
+            for (const auto& benchable : benchables) {
+                // run the benchmark
+                timer.startTimer();
+                benchable->runBenchmark(iterations);
+                size_t cyclesTaken = timer.endTimer();
+                benchable->resetBenchmark();
+
+                // add results into the benchmark collection
+                benchmarkCollection.addTime(benchable->getName(), cyclesTaken);
+            }
         }
     }
+
+    void printResults() {
+        benchmarkCollection.print();
+    }
+
 private:
+
     BenchRunner() = default;
     Timer& timer = Timer::getInstance();
     std::vector<std::unique_ptr<Benchable>> benchables;
+    BenchmarkCollection benchmarkCollection;
 };
 
 }
