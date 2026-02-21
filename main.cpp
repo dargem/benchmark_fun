@@ -1,25 +1,25 @@
-#include "src/timer.hpp"
-#include "src/benchmarks/rng/xoroshiro128+.hpp"
-#include "src/benchmarks/branch_prediction_sorted.hpp"
-#include "src/benchmarks/branch_prediction_unsorted.hpp"
-
-#include "src/benchmarks/bench_runner.hpp"
 #include <iostream>
 #include <memory>
 
-using benchmarks::Xoroshiro128plus;
+#include "src/benchmarks/bench_runner.hpp"
+#include "src/benchmarks/branch_prediction_sorted.hpp"
+#include "src/benchmarks/branch_prediction_unsorted.hpp"
+#include "src/benchmarks/rng/xoroshiro128+.hpp"
+#include "src/timer.hpp"
+
+using benchmarks::Benchable;
+using benchmarks::BenchRunner;
 using benchmarks::BranchPredictionSorted;
 using benchmarks::BranchPredictionUnsorted;
-using benchmarks::BenchRunner;
-using benchmarks::Benchable;
+using benchmarks::Xoroshiro128plus;
 
 void runRNGBenchmark() {
     BenchRunner& benchRunner = BenchRunner::getInstance();
     benchRunner.clearBenchables();
 
-    constexpr size_t ITERATIONS{ 1000000 };
-    constexpr size_t NUM_SAMPLES{ 300 };
-    constexpr int RNG_SEED{ 50000 };
+    constexpr size_t ITERATIONS{1000000};
+    constexpr size_t NUM_SAMPLES{300};
+    constexpr int RNG_SEED{50000};
 
     {
         // add mersenne twister inbuilt later maybe, half sure this doesn't work
@@ -37,10 +37,10 @@ void runBranchPredictionBenchmark() {
     BenchRunner& benchRunner = BenchRunner::getInstance();
     benchRunner.clearBenchables();
 
-    constexpr size_t ITERATIONS{ 1000 };
-    constexpr size_t NUM_SAMPLES{ 100 };
-    constexpr int LIST_SIZE{ 10000 }; 
-    // this is 10000 iterations over 10000 size list, sampling 100 times of that for each
+    constexpr size_t ITERATIONS{100};
+    constexpr size_t NUM_SAMPLES{300};
+    constexpr int LIST_SIZE{10000};
+    // this is 100 iterations over 10000 size list, sampling 300 times of that for each
 
     {
         auto sortedNumbers = std::make_unique<BranchPredictionSorted>(LIST_SIZE);
@@ -58,7 +58,7 @@ int main() {
     try {
         runRNGBenchmark();
         runBranchPredictionBenchmark();
-    } catch(const std::runtime_error e) {
+    } catch (const std::runtime_error e) {
         std::cout << "Error: " << e.what() << std::endl;
     }
 

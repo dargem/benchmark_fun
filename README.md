@@ -1,21 +1,17 @@
 # benchmarks
-some random benchmarks for fun
-<br>
-CPU specs: Ryzen 7 260, 8 core
-* L1i 32 kb per core
-* L1d 32 kb per core
-* L2 1 mb per core
-* l3 16 mb shared
-
+some random benchmarks of questionable accuracy but is hopefully interesting 
 probably doesn't work on 32 bit systems due to hacky stuff!
 
 # benches!
 Benchmark is an iteration through a list of random numbers in range a to b.
-If that number is larger than the mid range a number gets incremented.
-The compiler is stopped from making this loop branchless.
-Sorting this list before iteration helps the branch predictor.
-as its effectively a lot of smaller than val, followed by a lot of larger than val.
-
+If that number is larger than (a+b)/2 a number gets incremented.
+The compiler is stopped from making this loop branchless,
+so the cpu has to do branch predictions which are effectively random.
+An incorrect branch prediction requires the core to flush the instruction pipeline.
+This leads to a ~15-20 cycle cost on an incorrect prediction. 
+Sorting this list before iteration helps the branch predictor,
+as for the ~ first half of the list it'll be smaller than the mean (approximately) while its larger than for the second half.
+This makes branch prediction very easy, so sorting a list should result in better performance.
 
 ---Summary statistics for Branch Prediction Sorted Version--- <br>
 Sample mean cycles per test: 2.11696e+07 <br>
@@ -29,8 +25,10 @@ Confidence interval: 3.43189e+07-3.46334e+07 <br>
 Sample standard deviation: 792475 <br>
 Tests used: 100 <br>
 
+
+
 # plans
-* benchrunner which can output some proper statistics for comparison
+* proper statistics with anova, levene test, residual normality checking and other stuff
 * prefetcher stuff with contiguous memory access graphic latency vs different working sizes, compare against linked list pointer chasing
 * array of structures vs structure of arrays
 * simd/vectorisation falls into SOA kinda

@@ -1,35 +1,29 @@
 #pragma once
 
 #include <cstddef>
-#include "src/benchmarks/benchable.hpp"
-#include "src/benchmarks/bench_types.hpp"
-#include <vector>
 #include <random>
 #include <string_view>
+#include <vector>
+
+#include "src/benchmarks/bench_types.hpp"
+#include "src/benchmarks/benchable.hpp"
 
 namespace benchmarks {
 
 class BranchPredictionUnsorted : public Benchable {
-public:
-
-    BranchPredictionUnsorted(size_t listSize, std::string_view name)
-        : Benchable(BenchType::BRANCH_PREDICTION, name),
-        listSize{ listSize }
-    {
+   public:
+    BranchPredictionUnsorted(size_t listSize, std::string_view name) :
+            Benchable(BenchType::BRANCH_PREDICTION, name), listSize{listSize} {
         resetBenchmark();
     }
-        
-    BranchPredictionUnsorted(size_t listSize) 
-        : Benchable(BenchType::BRANCH_PREDICTION, NAME), 
-        listSize{ listSize }
-    {
+
+    BranchPredictionUnsorted(size_t listSize) :
+            Benchable(BenchType::BRANCH_PREDICTION, NAME), listSize{listSize} {
         resetBenchmark();
     }
 
     // returns a reference to random numbers
-    std::vector<int>& getInternalNumbersVector() {
-        return randomNumbers;
-    }
+    std::vector<int>& getInternalNumbersVector() { return randomNumbers; }
 
     void resetBenchmark() override {
         // get a random seed from the hardware
@@ -38,7 +32,7 @@ public:
         // make a mersenne twister RNG with a distribution for it
         std::mt19937 randomNumberGenerator(rd());
         std::uniform_int_distribution<int> distrib(DISTRIBUTION_MIN, DISTRIBUTION_MAX);
-        
+
         randomNumbers.resize(listSize);
         for (size_t i{}; i < randomNumbers.size(); ++i) {
             randomNumbers[i] = distrib(randomNumberGenerator);
@@ -59,7 +53,7 @@ public:
         asm volatile("" : : "r"(successes) : "memory");
     }
 
-private:
+   private:
 #if defined(__GNUC__) || defined(__clang__)
     __attribute__((noinline))
 #endif
@@ -72,7 +66,7 @@ private:
     const size_t listSize;
     static constexpr int DISTRIBUTION_MAX{100000};
     static constexpr int DISTRIBUTION_MIN{0};
-    static constexpr int SIZE_NEEDED_FOR_SUCCESS{(DISTRIBUTION_MAX + DISTRIBUTION_MIN)/2};
+    static constexpr int SIZE_NEEDED_FOR_SUCCESS{(DISTRIBUTION_MAX + DISTRIBUTION_MIN) / 2};
 };
 
-}
+}  // namespace benchmarks

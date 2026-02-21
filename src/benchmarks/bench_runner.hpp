@@ -1,48 +1,52 @@
 #pragma once
 
-#include <vector>
-#include <stdexcept>
 #include <math.h>
-#include <iostream>
+
+#include <boost/math/distributions/students_t.hpp>
 #include <format>
+#include <iostream>
 #include <memory>
+#include <stdexcept>
+#include <vector>
+
 #include "src/benchmarks/benchable.hpp"
 #include "src/timer.hpp"
-#include <boost/math/distributions/students_t.hpp>
-
 
 namespace benchmarks {
 
-constexpr static size_t NUMBER_CLT_TESTS_NEEDED{ 30 };
+constexpr static size_t NUMBER_CLT_TESTS_NEEDED{30};
 
 struct Evaluation {
-    Evaluation(std::string_view name, double meanCycles, double standardDeviation, size_t numTests)
-        : name{ name }, meanCycles{ meanCycles }, standardDeviation{ standardDeviation }, numTests{ numTests }
-    {
+    Evaluation(std::string_view name, double meanCycles, double standardDeviation,
+               size_t numTests) :
+            name{name},
+            meanCycles{meanCycles},
+            standardDeviation{standardDeviation},
+            numTests{numTests} {
         // calculate the confidence interval
         if (numTests < NUMBER_CLT_TESTS_NEEDED) {
-            throw std::runtime_error(std::format(
-                "More tests needed for central limit theorem; need {} but have {}",
-                NUMBER_CLT_TESTS_NEEDED,
-                numTests));
+            throw std::runtime_error(
+                std::format("More tests needed for central limit theorem; need {} but have {}",
+                            NUMBER_CLT_TESTS_NEEDED, numTests));
         }
 
-        // use central limit theorem to create a confidence interval for the true mean using t distribution
-        
+        // use central limit theorem to create a confidence interval for the true mean using t
+        // distribution
+
         // confidence interval is x_bar ± t * (s / sqrt(n))
         boost::math::students_t dist(numTests - 1);
-        const double tScore{ boost::math::quantile(dist, 1.0 - ALPHA / 2.0) };
-        const double margin{ tScore * standardDeviation / std::sqrt(static_cast<double>(numTests)) };
+        const double tScore{boost::math::quantile(dist, 1.0 - ALPHA / 2.0)};
+        const double margin{tScore * standardDeviation / std::sqrt(static_cast<double>(numTests))};
         lowerConfidenceInterval = meanCycles - margin;
         upperConfidenceInterval = meanCycles + margin;
     }
 
     void print() {
         std::cout << "---Summary statistics for " << name << "---"
-                  << "\nSample mean cycles per test: " << meanCycles 
-                  << "\nConfidence interval: " << lowerConfidenceInterval << "-" << upperConfidenceInterval
-                  << "\nSample standard deviation: " << standardDeviation 
-                  << "\nTests used: " << numTests << std::endl; 
+                  << "\nSample mean cycles per test: " << meanCycles
+                  << "\nConfidence interval: " << lowerConfidenceInterval << "-"
+                  << upperConfidenceInterval << "\nSample standard deviation: " << standardDeviation
+                  << "\nTests used: " << numTests << std::endl;
     }
 
     const std::string_view name;
@@ -57,51 +61,46 @@ struct Evaluation {
     const size_t numTests;
 
     // confidence interval made using CONFIDENCE_ALPHA global variable
-    constexpr static double ALPHA{ 0.05 };
+    constexpr static double ALPHA{0.05};
     double lowerConfidenceInterval;
     double upperConfidenceInterval;
 };
 
 struct Benchmark {
-    Benchmark(std::string_view name, size_t clockTime)
-        : name{ name }
-    {
+    Benchmark(std::string_view name, size_t clockTime) : name{name} {
         clockTimes.push_back(clockTime);
     }
 
     Evaluation createEvaluation() {
-
-        size_t numTests{ clockTimes.size() };
+        size_t numTests{clockTimes.size()};
 
         if (numTests < NUMBER_CLT_TESTS_NEEDED) {
-            throw std::runtime_error(std::format(
-                "Not enough tests run for central limit theorem; need {} but have {}",
-                NUMBER_CLT_TESTS_NEEDED,
-                numTests));
+            throw std::runtime_error(
+                std::format("Not enough tests run for central limit theorem; need {} but have {}",
+                            NUMBER_CLT_TESTS_NEEDED, numTests));
         }
 
         double totalCycles{};
         for (size_t clockTime : clockTimes) {
             totalCycles += clockTime;
         }
-        double sampleMean{ totalCycles / numTests };
+        double sampleMean{totalCycles / numTests};
 
         double variance{};
         for (size_t clockTime : clockTimes) {
             variance += std::pow(clockTime - sampleMean, 2);
         }
 
-        double standardDeviation{ std::pow(variance/(numTests - 1), 0.5) };
+        double standardDeviation{std::pow(variance / (numTests - 1), 0.5)};
         return Evaluation(name, sampleMean, standardDeviation, numTests);
     }
 
-    
     const std::string_view name;
     std::vector<size_t> clockTimes;
 };
 
 class BenchmarkCollection {
-public:
+   public:
     void addTime(std::string_view name, size_t timeTaken) {
         for (Benchmark& bench : benchmarks) {
             if (bench.name == name) {
@@ -112,7 +111,7 @@ public:
 
         // if its not in
         benchmarks.push_back({name, timeTaken});
-    }    
+    }
 
     // print the results of the benchmark out
     void print() {
@@ -123,29 +122,43 @@ public:
             evaluations.push_back(bench.createEvaluation());
             evaluations.back().print();
         }
+
+        if (evaluations.size() == 2) {
+            // Find the confidence interval for difference in means
+        }
     }
 
-private:
+   private:
+    // Levene's test for the equality of variance
+    // returns whether it has equal variances
+    bool hasEqualVariances(std::vector<Evaluation>& evaluations, double alpha = 0.95) {
+        // https://medium.com/@kyawsawhtoon/levenes-test-the-assessment-for-equality-of-variances-94503b695a57
+        // calculate test statistic W
+        int N = std::accumulate(evaluations.begin(), evaluations.end(), 0,
+                                [](size_t count, Evaluation& evaluation) {
+                                    return count + evaluation.numTests;
+                                });  // Total number of cases in all groups
+    }
+
     std::vector<Benchmark> benchmarks;
 };
 
-
-
 // class for running benchmarks
 // also a singleton because I like singletons and its tightly linked to the timer singleton
-// so there shouldn't be multiple bench runners at a time as the current timing method doesn't allow it
+// so there shouldn't be multiple bench runners at a time as the current timing method doesn't allow
+// it
 class BenchRunner {
-public:
+   public:
     // Get a reference to the benchrunner
     static BenchRunner& getInstance() {
-        static BenchRunner benchRunner; // lazily construct the benchrunner
+        static BenchRunner benchRunner;  // lazily construct the benchrunner
         return benchRunner;
     }
 
-    BenchRunner(const BenchRunner&) = delete; // no copy constructor
-    BenchRunner(BenchRunner&&) = delete; // no move constructor
-    void operator=(const BenchRunner&) = delete; // no copy assignment
-    void operator=(BenchRunner&&) = delete; // no move assignment
+    BenchRunner(const BenchRunner&) = delete;     // no copy constructor
+    BenchRunner(BenchRunner&&) = delete;          // no move constructor
+    void operator=(const BenchRunner&) = delete;  // no copy assignment
+    void operator=(BenchRunner&&) = delete;       // no move assignment
 
     // Move ownership of the benchable to the bench runner
     void addBenchable(std::unique_ptr<Benchable> newBenchable) {
@@ -154,7 +167,8 @@ public:
                 throw std::runtime_error("Shouldn't have two of the same benchables");
             }
             if (benchable->getBenchType() != newBenchable->getBenchType()) {
-                throw std::runtime_error("Benchmark shouldn't compare benchables of different types");
+                throw std::runtime_error(
+                    "Benchmark shouldn't compare benchables of different types");
             }
         }
         benchables.push_back(std::move(newBenchable));
@@ -181,16 +195,13 @@ public:
         }
     }
 
-    void printResults() {
-        benchmarkCollection.print();
-    }
+    void printResults() { benchmarkCollection.print(); }
 
-private:
-
+   private:
     BenchRunner() = default;
     Timer& timer = Timer::getInstance();
     std::vector<std::unique_ptr<Benchable>> benchables;
     BenchmarkCollection benchmarkCollection;
 };
 
-}
+}  // namespace benchmarks

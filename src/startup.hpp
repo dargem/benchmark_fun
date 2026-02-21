@@ -1,6 +1,7 @@
 #pragma once
-#include <sched.h> 
 #include <pthread.h>
+#include <sched.h>
+
 #include <iostream>
 
 namespace startup {
@@ -12,7 +13,7 @@ void pin_thread(int core_id) {
     // Define and initialize a CPU set
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
-    CPU_SET(core_id, &cpuset); // Set the specific core
+    CPU_SET(core_id, &cpuset);  // Set the specific core
 
     // Set the affinity of the current thread
     int rc = pthread_setaffinity_np(this_thread, sizeof(cpu_set_t), &cpuset);
@@ -23,4 +24,4 @@ void pin_thread(int core_id) {
     }
 }
 
-}
+}  // namespace startup
