@@ -17,9 +17,10 @@ namespace benchmarks {
 constexpr static size_t NUMBER_CLT_TESTS_NEEDED{30};
 
 struct Evaluation {
-    Evaluation(std::string_view name, double meanCycles, double standardDeviation,
-               size_t numTests) :
+    Evaluation(std::string_view name, const std::vector<size_t> times, double meanCycles,
+               double standardDeviation, size_t numTests) :
             name{name},
+            observationValues{times},
             meanCycles{meanCycles},
             standardDeviation{standardDeviation},
             numTests{numTests} {
@@ -50,6 +51,9 @@ struct Evaluation {
     }
 
     const std::string_view name;
+
+    // kinda hacky but some stuff like levene's need access to test values not just summary stats
+    const std::vector<size_t> observationValues;
 
     // sampled mean number of cycles it took to do an iteration of the bench
     const double meanCycles;
@@ -92,7 +96,7 @@ struct Benchmark {
         }
 
         double standardDeviation{std::pow(variance / (numTests - 1), 0.5)};
-        return Evaluation(name, sampleMean, standardDeviation, numTests);
+        return Evaluation(name, clockTimes, sampleMean, standardDeviation, numTests);
     }
 
     const std::string_view name;
@@ -134,10 +138,40 @@ class BenchmarkCollection {
     bool hasEqualVariances(std::vector<Evaluation>& evaluations, double alpha = 0.95) {
         // https://medium.com/@kyawsawhtoon/levenes-test-the-assessment-for-equality-of-variances-94503b695a57
         // calculate test statistic W
-        int N = std::accumulate(evaluations.begin(), evaluations.end(), 0,
-                                [](size_t count, Evaluation& evaluation) {
-                                    return count + evaluation.numTests;
-                                });  // Total number of cases in all groups
+        const int N = std::accumulate(evaluations.begin(), evaluations.end(), 0,
+                                      [](int count, const Evaluation& evaluation) {
+                                          return count + evaluation.numTests;
+                                      });  // Total number of cases in all groups
+        const int k =
+            evaluations.size();  // Total number of different groups the sampled cases belong
+
+        // For each group, sum the (num cases in group * (mean of group - mean of all groups)^2) to
+        // get the second parts nominator
+        const double allGroupTotal = std::accumulate(
+            evaluations.begin(), evaluations.end(), 0, [](int total, const Evaluation& evaluation) {
+                // evalMean = evalTotal / evalNumTests, rearranging
+                return total + evaluation.meanCycles * evaluation.numTests;
+            });
+        const double allGroupMean = allGroupTotal / N;  // divide by number of total observations
+
+        const double nominator = std::accumulate(
+            evaluations.begin(), evaluations.end(), 0,
+            [allGroupMean](double rollingTotal, const Evaluation& eval) {
+                return rollingTotal + eval.numTests * std::pow(eval.meanCycles - allGroupMean, 2);
+            });
+
+        // For the second parts dominator, sum together (observation - mean of that observations
+        // group)^2, for each observation in each group.
+
+        double denominator{};
+        for (const Evaluation& eval : evaluations) {
+            for (size_t observation : eval.observationValues) {
+                denominator += std::pow(observation - eval.meanCycles, 2);
+            }
+        }
+
+        // the test statistic!
+        const double W = static_cast<double>(N - k) / (k - 1) * nominator / denominator;
     }
 
     std::vector<Benchmark> benchmarks;
