@@ -14,14 +14,14 @@ public:
         : BranchPredictionUnsorted(listSize, NAME)
     {
         // On construction just sort the numbers of parent lazy way to do this
-        std::vector<double>& numbers{BranchPredictionUnsorted::getInternalNumbersVector()};
+        std::vector<int>& numbers{BranchPredictionUnsorted::getInternalNumbersVector()};
         std::sort(numbers.begin(), numbers.end());
     }
 
     void resetBenchmark() {
         // call base reset benchmark getting new random numbers
         BranchPredictionUnsorted::resetBenchmark();
-        std::vector<double>& numbers{BranchPredictionUnsorted::getInternalNumbersVector()};
+        std::vector<int>& numbers{BranchPredictionUnsorted::getInternalNumbersVector()};
         std::sort(numbers.begin(), numbers.end());
     }
 

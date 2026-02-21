@@ -27,7 +27,7 @@ public:
     }
 
     // returns a reference to random numbers
-    std::vector<double>& getInternalNumbersVector() {
+    std::vector<int>& getInternalNumbersVector() {
         return randomNumbers;
     }
 
@@ -37,9 +37,9 @@ public:
 
         // make a mersenne twister RNG with a distribution for it
         std::mt19937 randomNumberGenerator(rd());
-        std::uniform_int_distribution<double> distrib(DISTRIBUTION_MIN, DISTRIBUTION_MAX);
+        std::uniform_int_distribution<int> distrib(DISTRIBUTION_MIN, DISTRIBUTION_MAX);
         
-        randomNumbers.reserve(listSize);
+        randomNumbers.resize(listSize);
         for (size_t i{}; i < randomNumbers.size(); ++i) {
             randomNumbers[i] = distrib(randomNumberGenerator);
         }
@@ -48,9 +48,10 @@ public:
     void runBenchmark(size_t iterations) override {
         size_t successes{};
         for (size_t i{}; i < iterations; ++i) {
-            for (double number : randomNumbers) {
+            for (int number : randomNumbers) {
                 if (number > SIZE_NEEDED_FOR_SUCCESS) {
                     successes += 1;
+                    consume(successes);
                 }
             }
         }
@@ -59,12 +60,19 @@ public:
     }
 
 private:
+#if defined(__GNUC__) || defined(__clang__)
+    __attribute__((noinline))
+#endif
+    static void consume(size_t& value) {
+        asm volatile("" : "+r"(value) : : "memory");
+    }
+
     static constexpr std::string_view NAME{"Branch Prediction Unsorted Version"};
-    std::vector<double> randomNumbers;
+    std::vector<int> randomNumbers;
     const size_t listSize;
-    static constexpr double DISTRIBUTION_MAX{100};
-    static constexpr double DISTRIBUTION_MIN{0};
-    static constexpr double SIZE_NEEDED_FOR_SUCCESS{0};
+    static constexpr int DISTRIBUTION_MAX{100000};
+    static constexpr int DISTRIBUTION_MIN{0};
+    static constexpr int SIZE_NEEDED_FOR_SUCCESS{(DISTRIBUTION_MAX + DISTRIBUTION_MIN)/2};
 };
 
 }

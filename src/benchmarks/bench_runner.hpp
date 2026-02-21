@@ -150,7 +150,7 @@ public:
     // Move ownership of the benchable to the bench runner
     void addBenchable(std::unique_ptr<Benchable> newBenchable) {
         for (const auto& benchable : benchables) {
-            if (typeid(benchable) == typeid(newBenchable)) {
+            if (typeid(*benchable) == typeid(*newBenchable)) {
                 throw std::runtime_error("Shouldn't have two of the same benchables");
             }
             if (benchable->getBenchType() != newBenchable->getBenchType()) {
@@ -162,6 +162,7 @@ public:
 
     void clearBenchables() {
         benchables.clear();
+        benchmarkCollection = BenchmarkCollection();
     }
 
     void runBenchmarks(size_t iterations, size_t numSamples) {
