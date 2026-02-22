@@ -2,15 +2,17 @@
 #include <memory>
 
 #include "src/benchmarks/bench_runner.hpp"
-#include "src/benchmarks/branch_prediction_sorted.hpp"
-#include "src/benchmarks/branch_prediction_unsorted.hpp"
+#include "src/benchmarks/branch_prediction/branch_prediction_sorted.hpp"
+#include "src/benchmarks/branch_prediction/branch_prediction_unsorted.hpp"
 #include "src/benchmarks/rng/xoroshiro128+.hpp"
+#include "src/benchmarks/vector_access/vectors.hpp"
 #include "src/timer.hpp"
 
 using benchmarks::Benchable;
 using benchmarks::BenchRunner;
 using benchmarks::BranchPredictionSorted;
 using benchmarks::BranchPredictionUnsorted;
+using benchmarks::VectorAccess;
 using benchmarks::Xoroshiro128plus;
 
 void runRNGBenchmark() {
@@ -54,10 +56,35 @@ void runBranchPredictionBenchmark() {
     benchRunner.clearBenchables();
 }
 
+void runVectorRandomAccessBenchmark() {
+    BenchRunner& benchRunner = BenchRunner::getInstance();
+    benchRunner.clearBenchables();
+
+    constexpr size_t numElements{10000};
+    constexpr size_t numIndicies{1000};
+
+    {
+        auto boolAccessBench = std::make_unique<VectorAccess<bool>>(numElements, numIndicies);
+        auto charAccessBench = std::make_unique<VectorAccess<char>>(numElements, numIndicies);
+        auto uint8_tAccessBench = std::make_unique<VectorAccess<uint8_t>>(numElements, numIndicies);
+
+        benchRunner.addBenchable(std::move(boolAccessBench));
+        benchRunner.addBenchable(std::move(charAccessBench));
+        benchRunner.addBenchable(std::move(uint8_tAccessBench));
+    }
+
+    constexpr size_t ITERATIONS{1};
+    constexpr size_t NUM_SAMPLES{1000};
+    benchRunner.runBenchmarks(ITERATIONS, NUM_SAMPLES);
+    benchRunner.printResults();
+    benchRunner.clearBenchables();
+}
+
 int main() {
     try {
         runRNGBenchmark();
         runBranchPredictionBenchmark();
+        runVectorRandomAccessBenchmark();
     } catch (const std::runtime_error e) {
         std::cout << "Error: " << e.what() << std::endl;
     }

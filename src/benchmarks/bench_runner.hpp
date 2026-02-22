@@ -2,10 +2,12 @@
 
 #include <math.h>
 
+#include <boost/math/distributions/fisher_f.hpp>
 #include <boost/math/distributions/students_t.hpp>
 #include <format>
 #include <iostream>
 #include <memory>
+#include <numeric>
 #include <stdexcept>
 #include <vector>
 
@@ -133,7 +135,7 @@ class BenchmarkCollection {
     }
 
    private:
-    // Levene's test for the equality of variance
+    // Levene's test for the equality of variance, this is incorrect currently
     // returns whether it has equal variances
     bool hasEqualVariances(std::vector<Evaluation>& evaluations, double alpha = 0.95) {
         // https://medium.com/@kyawsawhtoon/levenes-test-the-assessment-for-equality-of-variances-94503b695a57
@@ -143,7 +145,9 @@ class BenchmarkCollection {
                                           return count + evaluation.numTests;
                                       });  // Total number of cases in all groups
         const int k =
-            evaluations.size();  // Total number of different groups the sampled cases belong
+            evaluations.size();  // Total number of different / sub groups the sampled cases belong
+
+        // transform the data!
 
         // For each group, sum the (num cases in group * (mean of group - mean of all groups)^2) to
         // get the second parts nominator
@@ -172,6 +176,15 @@ class BenchmarkCollection {
 
         // the test statistic!
         const double W = static_cast<double>(N - k) / (k - 1) * nominator / denominator;
+
+        // first df is number subgroups - 1, second df is num observations - num of subgroups
+        boost::math::fisher_f dist(k - 1, N - k);
+        // get the critical value for my alpha and F distribution
+        const double criticalF = boost::math::quantile(dist, alpha);
+
+        // If W < than the critical value, we fail to reject the null hypothesis of equal variances
+        // so this returns true as it is considered as having equal variances!
+        return W < criticalF;
     }
 
     std::vector<Benchmark> benchmarks;

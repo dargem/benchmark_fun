@@ -2,7 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <src/benchmarks/branch_prediction_unsorted.hpp>
+#include <src/benchmarks/branch_prediction/branch_prediction_unsorted.hpp>
 #include <string_view>
 #include <vector>
 
