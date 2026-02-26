@@ -35,7 +35,7 @@ Tests used: 100 <br>
 # Random access of char vs uint8_t vs bool vectors
 
 C++ uses a template specialization for bool vectors where it does bit packing of 8 bools in a byte.
-This is good for memory but as memory is addressed by the byte this leads to some issues,
+This is good for memory but as memory is addressed by the byte this leads to some issues:
 
 - Runtime overhead when reading / writing as bit manipulation is needed to access the specific bit
 - Can't take a reference to a bool in a vector
@@ -96,6 +96,24 @@ Confidence interval: 973945-1.02813e+06 <br>
 Sample standard deviation: 436552 <br>
 Tests used: 1000 <br>
 
+# XOROSHIRO 128+ vs Inbuilt Mersenne Twister
+
+Surprisingly close results between xoroshiro 128+ and the inbuilt mersenne twister rng.
+Was expecting xoroshiro128+ to be substantially faster though a bit under ~10% faster number generation is still very welcome,
+especially given the superior statistical qualities it has over mersenne twister.
+
+---Summary statistics for Potentially observable Xoroshiro RNG--- <br>
+Sample mean cycles per test: 2.25722e+06 <br>
+Confidence interval: 2.25025e+06-2.26419e+06 <br>
+Sample standard deviation: 61357.1 <br>
+Tests used: 300 <br>
+
+---Summary statistics for Mersenne twister RNG--- <br>
+Sample mean cycles per test: 2.45022e+06 <br>
+Confidence interval: 2.43803e+06-2.46241e+06 <br>
+Sample standard deviation: 107269 <br>
+Tests used: 300 <br>
+
 # plans
 
 - proper statistics with anova, levene test, residual normality checking and other stuff
@@ -104,4 +122,3 @@ Tests used: 1000 <br>
 - simd/vectorisation falls into SOA kinda
 - false sharing messing with concurrency
 - maybe LTO
-- random number generator vs inbuilt

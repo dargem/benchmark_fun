@@ -4,6 +4,7 @@
 #include "src/benchmarks/bench_runner.hpp"
 #include "src/benchmarks/branch_prediction/branch_prediction_sorted.hpp"
 #include "src/benchmarks/branch_prediction/branch_prediction_unsorted.hpp"
+#include "src/benchmarks/rng/mersenne_twister.hpp"
 #include "src/benchmarks/rng/xoroshiro128+.hpp"
 #include "src/benchmarks/vector_access/vectors.hpp"
 #include "src/timer.hpp"
@@ -12,6 +13,7 @@ using benchmarks::Benchable;
 using benchmarks::BenchRunner;
 using benchmarks::BranchPredictionSorted;
 using benchmarks::BranchPredictionUnsorted;
+using benchmarks::MersenneTwister;
 using benchmarks::VectorAccess;
 using benchmarks::Xoroshiro128plus;
 
@@ -24,9 +26,10 @@ void runRNGBenchmark() {
     constexpr int RNG_SEED{50000};
 
     {
-        // add mersenne twister inbuilt later maybe, half sure this doesn't work
-        auto rng = std::make_unique<Xoroshiro128plus<true>>(RNG_SEED);
-        benchRunner.addBenchable(std::move(rng));
+        auto customRNG = std::make_unique<Xoroshiro128plus<true>>(RNG_SEED);
+        auto mersenneRNG = std::make_unique<MersenneTwister>();
+        benchRunner.addBenchable(std::move(customRNG));
+        benchRunner.addBenchable(std::move(mersenneRNG));
     }
 
     benchRunner.runBenchmarks(ITERATIONS, NUM_SAMPLES);
