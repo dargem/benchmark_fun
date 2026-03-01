@@ -135,6 +135,8 @@ class BenchmarkCollection {
     }
 
    private:
+    
+
     // Levene's test for the equality of variance, this is incorrect currently
     // returns whether it has equal variances
     bool hasEqualVariances(std::vector<Evaluation>& evaluations, double alpha = 0.95) {
@@ -186,6 +188,8 @@ class BenchmarkCollection {
         // so this returns true as it is considered as having equal variances!
         return W < criticalF;
     }
+
+    
 
     std::vector<Benchmark> benchmarks;
 };

@@ -116,6 +116,7 @@ Tests used: 300 <br>
 
 # plans
 
+- Benchmarks for different types of containers, eg vector vs sparse set vs linked list vs colony/hive
 - proper statistics with anova, levene test, residual normality checking and other stuff
 - prefetcher stuff with contiguous memory access graphic latency vs different working sizes, compare against linked list pointer chasing
 - array of structures vs structure of arrays
