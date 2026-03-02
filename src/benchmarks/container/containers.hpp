@@ -24,6 +24,7 @@ template <Task T, typename C, typename E>
              std::same_as<C, std::list<E>>
 class ContainerTester : public Benchable {
    public:
+    
    private:
 };
 
