@@ -51,13 +51,6 @@ class BranchPredictionUnsorted : public Benchable {
     }
 
    private:
-#if defined(__GNUC__) || defined(__clang__)
-    __attribute__((noinline))
-#endif
-    static void consume(size_t& value) {
-        asm volatile("" : "+r"(value) : : "memory");
-    }
-
     static constexpr std::string_view NAME{"Branch Prediction Unsorted Version"};
     std::vector<int> randomNumbers;
     const size_t listSize;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <format>
+#include <string>
 #include <vector>
 
 #include "src/benchmarks/bench_types.hpp"
@@ -7,20 +9,27 @@
 
 namespace benchmarks {
 
+template <typename T>
+// for float types
+concept Floating =
+    std::same_as<T, float> || std::same_as<T, double> || std::same_as<T, long double>;
+
+template <Floating T>
 class AOS : public Benchable {
    private:
-       struct Entity {
-        double attack{1.0};
-        double defense{1.0};
-        double health{1.0};
-        double x{};
-        double y{};
-        double z{};
+    struct Entity {
+        T attack{1.0};
+        T defense{1.0};
+        T health{1.0};
+        T x{0.0};
+        T y{0.0};
+        T z{0.0};
     };
 
    public:
     AOS(size_t numEntities) :
-            Benchable(BenchType::STRUCTURE_LAYOUT, "Array of Structures Iteration"),
+            Benchable(BenchType::STRUCTURE_LAYOUT,
+                      std::format("Array of Structures Iteration over {}", typeName)),
             entities(numEntities, Entity{}) {}
 
     void runBenchmark(size_t iterations) override {
@@ -41,8 +50,22 @@ class AOS : public Benchable {
 
    private:
     std::vector<Entity> entities;  // Entity types
+    constexpr static std::string_view typeName = []() {
+        if constexpr (std::same_as<T, float>) {
+            return "float";
+        } else if constexpr (std::same_as<T, double>) {
+            return "double";
+        } else if constexpr (std::same_as<T, long double>) {
+            return "long double";
+        } else {
+            // this would fail prior to c++ 23 interestingly
+            static_assert(false, "Fallthrough on getting type name in structures.hpp");
+            return "holder";
+        }
+    }();
 };
 
+template <Floating T>
 class SOA : public Benchable {
    public:
     SOA(size_t numEntities) :
@@ -64,15 +87,15 @@ class SOA : public Benchable {
         // bland iteration, translating x, y and z by 1 in each direction
         // should be faster then AOS maybe due to SIMD?
         for (size_t i{}; i < iterations; ++i) {
-            for (double& x : x_locs) {
+            for (T& x : x_locs) {
                 x += 1;
             }
 
-            for (double& y : y_locs) {
+            for (T& y : y_locs) {
                 y += 1;
             }
 
-            for (double& z : z_locs) {
+            for (T& z : z_locs) {
                 z += 1;
             }
         }
@@ -83,12 +106,12 @@ class SOA : public Benchable {
     }
 
    private:
-    std::vector<double> attacks;
-    std::vector<double> defenses;
-    std::vector<double> healths;
-    std::vector<double> x_locs;
-    std::vector<double> y_locs;
-    std::vector<double> z_locs;
+    std::vector<T> attacks;
+    std::vector<T> defenses;
+    std::vector<T> healths;
+    std::vector<T> x_locs;
+    std::vector<T> y_locs;
+    std::vector<T> z_locs;
 };
 
 }  // namespace benchmarks

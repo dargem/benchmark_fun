@@ -88,12 +88,13 @@ void runVectorRandomAccessBenchmark() {
 
 void testSOA_AOS_Iteration() {
     BenchRunner& benchRunner = BenchRunner::getInstance();
+    benchRunner.clearBenchables();
 
     constexpr size_t NUMBER_ENTITIES{500000};
 
     {
-        std::unique_ptr<AOS> AOS_struct = std::make_unique<AOS>(NUMBER_ENTITIES);
-        std::unique_ptr<SOA> SOA_struct = std::make_unique<SOA>(NUMBER_ENTITIES);
+        auto AOS_struct = std::make_unique<AOS<float>>(NUMBER_ENTITIES);
+        auto SOA_struct = std::make_unique<SOA<float>>(NUMBER_ENTITIES);
         benchRunner.addBenchable(std::move(AOS_struct));
         benchRunner.addBenchable(std::move(SOA_struct));
     }
@@ -102,6 +103,7 @@ void testSOA_AOS_Iteration() {
     constexpr size_t SAMPLES{500};
     benchRunner.runBenchmarks(ITERATIONS, SAMPLES);
     benchRunner.printResults();
+    benchRunner.clearBenchables();
 }
 
 int main() {

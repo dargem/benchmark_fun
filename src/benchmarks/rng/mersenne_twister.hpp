@@ -15,7 +15,6 @@ class MersenneTwister : public Benchable {
             randomNumberGenerator(rd()) {};
 
     void runBenchmark(size_t iterations) override {
-        volatile double sink;
         for (size_t i{}; i < iterations; ++i) {
             sink = unif_dist(randomNumberGenerator);
         }
