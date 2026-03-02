@@ -27,7 +27,7 @@ class AOS : public Benchable {
             entities(numEntities, Entity{}) {}
 
     void runBenchmark(size_t iterations) override {
-        asm volatile("" : : "r"(entities) : "memory");
+        asm volatile("" : : "r"(entities.data()) : "memory");
         // bland iteration, translating x, y and z by 1 in each direction
         for (size_t i{}; i < iterations; ++i) {
             for (Entity& entity : entities) {
@@ -58,14 +58,14 @@ class SOA : public Benchable {
             z_locs(numEntities, {}) {}
 
     void runBenchmark(size_t iterations) override {
-        asm volatile("" : : "r"(attacks) : "memory");
-        asm volatile("" : : "r"(defenses) : "memory");
-        asm volatile("" : : "r"(healths) : "memory");
-        asm volatile("" : : "r"(x_locs) : "memory");
-        asm volatile("" : : "r"(y_locs) : "memory");
-        asm volatile("" : : "r"(z_locs) : "memory");
+        asm volatile("" : : "r"(attacks.data()) : "memory");
+        asm volatile("" : : "r"(defenses.data()) : "memory");
+        asm volatile("" : : "r"(healths.data()) : "memory");
+        asm volatile("" : : "r"(x_locs.data()) : "memory");
+        asm volatile("" : : "r"(y_locs.data()) : "memory");
+        asm volatile("" : : "r"(z_locs.data()) : "memory");
         // bland iteration, translating x, y and z by 1 in each direction
-        // should be faster then SOA maybe due to SIMD?
+        // should be faster then AOS maybe due to SIMD?
         for (size_t i{}; i < iterations; ++i) {
             for (double& x : x_locs) {
                 x += 1;

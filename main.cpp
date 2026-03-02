@@ -1,6 +1,7 @@
 #include <iostream>
 #include <memory>
 
+#include "src/benchmarks/SOA_AOS/structures.hpp"
 #include "src/benchmarks/bench_runner.hpp"
 #include "src/benchmarks/branch_prediction/branch_prediction_sorted.hpp"
 #include "src/benchmarks/branch_prediction/branch_prediction_unsorted.hpp"
@@ -9,11 +10,13 @@
 #include "src/benchmarks/vector_access/vectors.hpp"
 #include "src/timer.hpp"
 
+using benchmarks::AOS;
 using benchmarks::Benchable;
 using benchmarks::BenchRunner;
 using benchmarks::BranchPredictionSorted;
 using benchmarks::BranchPredictionUnsorted;
 using benchmarks::MersenneTwister;
+using benchmarks::SOA;
 using benchmarks::VectorAccess;
 using benchmarks::Xoroshiro128plus;
 
@@ -83,11 +86,30 @@ void runVectorRandomAccessBenchmark() {
     benchRunner.clearBenchables();
 }
 
+void testSOA_AOS_Iteration() {
+    BenchRunner& benchRunner = BenchRunner::getInstance();
+
+    constexpr size_t NUMBER_ENTITIES{500000};
+
+    {
+        std::unique_ptr<AOS> AOS_struct = std::make_unique<AOS>(NUMBER_ENTITIES);
+        std::unique_ptr<SOA> SOA_struct = std::make_unique<SOA>(NUMBER_ENTITIES);
+        benchRunner.addBenchable(std::move(AOS_struct));
+        benchRunner.addBenchable(std::move(SOA_struct));
+    }
+
+    constexpr size_t ITERATIONS{2};
+    constexpr size_t SAMPLES{500};
+    benchRunner.runBenchmarks(ITERATIONS, SAMPLES);
+    benchRunner.printResults();
+}
+
 int main() {
     try {
         runRNGBenchmark();
         runBranchPredictionBenchmark();
         runVectorRandomAccessBenchmark();
+        testSOA_AOS_Iteration();
     } catch (const std::runtime_error e) {
         std::cout << "Error: " << e.what() << std::endl;
     }

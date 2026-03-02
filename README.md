@@ -8,6 +8,34 @@ probably doesn't work on 32 bit systems due to hacky stuff!
 Seems like standard deviation can be out of wack occasionally.
 Not sure why but probably due to rare events like os jitter, core migrations and stuff like that which can skew one sample to take far longer.
 
+# Structure of Arrays (SOA) vs Array of Structures (AOS) (SIMD test)
+
+Benchmark is iterating over an effective list of entities.
+An entity consists of the doubles: attack, defense, health, x, y and z.
+In an iteration it just simply ticks up x, y and z positions by 1.
+An array of structure is just a vector of Entity instances, but a better way to do it can be having a structure of arrays.
+Rather the collection itself is a class, with vectors for each attack, defense, health and etc.
+This can allow vectorization of the code where the CPU performs a single operation on multiple pieces of data in parallel,
+also known as simd (single instruction multiple data).
+This can lead to massive performance increases.
+Cache locality is also arguably better if you only need to iterate over say the coordinates of an entity,
+with AOS it would load the whole entity into the cache.
+If that entity is large thats obviously inefficient and it might be pushing out actually useful stuff.
+
+---Summary statistics for Array of Structures Iteration---
+Sample mean cycles per test: 1.32802e+07
+Confidence interval: 1.25977e+07-1.39627e+07
+Sample standard deviation: 7.76792e+06
+Tests used: 500
+---Summary statistics for Structure of Array iteration---
+Sample mean cycles per test: 7.21224e+06
+Confidence interval: 6.8314e+06-7.59308e+06
+Sample standard deviation: 4.33437e+06
+Tests used: 500
+
+Has some pretty major performance improvements with ~double the iteration speed.
+Obviously makes the code far less readable performance improvements can be useful sometimes.
+
 # Sorting to help with branch prediction
 
 Benchmark is an iteration through a list of random numbers in range a to b.
@@ -119,7 +147,6 @@ Tests used: 300 <br>
 - Benchmarks for different types of containers, eg vector vs sparse set vs linked list vs colony/hive
 - proper statistics with anova, levene test, residual normality checking and other stuff
 - prefetcher stuff with contiguous memory access graphic latency vs different working sizes, compare against linked list pointer chasing
-- array of structures vs structure of arrays
 - simd/vectorisation falls into SOA kinda
 - false sharing messing with concurrency
 - maybe LTO
