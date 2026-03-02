@@ -15,16 +15,14 @@ class MersenneTwister : public Benchable {
             randomNumberGenerator(rd()) {};
 
     void runBenchmark(size_t iterations) override {
+        volatile double sink;
         for (size_t i{}; i < iterations; ++i) {
-            unif_dist(randomNumberGenerator);
+            sink = unif_dist(randomNumberGenerator);
         }
     }
 
     // reseed it with another hardware generated random number
     void resetBenchmark() override { randomNumberGenerator.seed(rd()); }
-
-    // observe it
-    void printNextDouble() { std::cout << unif_dist(randomNumberGenerator); }
 
    private:
     // get a random seed from the hardware
@@ -32,6 +30,7 @@ class MersenneTwister : public Benchable {
     // instantiate a mersenne twister with a distribution fit
     std::mt19937 randomNumberGenerator;
     std::uniform_real_distribution<double> unif_dist{};
+    volatile double sink{};
 
     // make a mersenne twister RNG with a distribution for it
 };

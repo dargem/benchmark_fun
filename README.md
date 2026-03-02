@@ -126,20 +126,20 @@ Tests used: 1000 <br>
 
 # XOROSHIRO 128+ vs Inbuilt Mersenne Twister
 
-Surprisingly close results between xoroshiro 128+ and the inbuilt mersenne twister rng.
-Was expecting xoroshiro128+ to be substantially faster though a bit under ~10% faster number generation is still very welcome,
-especially given the superior statistical qualities it has over mersenne twister.
+Considerably better results from the xoroshiro 128++ rng and the inbuilt mersenne twister rng.
+Was expecting xoroshiro128+ to be substantially faster and is 3x faster number generation is still very welcome.
+Xoroshiro also has better statistical properties.
 
----Summary statistics for Potentially observable Xoroshiro RNG--- <br>
-Sample mean cycles per test: 2.25722e+06 <br>
-Confidence interval: 2.25025e+06-2.26419e+06 <br>
-Sample standard deviation: 61357.1 <br>
+---Summary statistics for Xoroshiro128+ RNG--- <br>
+Sample mean cycles per test: 3.09121e+06 <br>
+Confidence interval: 3.08428e+06-3.09813e+06 <br>
+Sample standard deviation: 60965.1 <br>
 Tests used: 300 <br>
 
 ---Summary statistics for Mersenne twister RNG--- <br>
-Sample mean cycles per test: 2.45022e+06 <br>
-Confidence interval: 2.43803e+06-2.46241e+06 <br>
-Sample standard deviation: 107269 <br>
+Sample mean cycles per test: 8.83133e+06 <br>
+Confidence interval: 8.75627e+06-8.90639e+06 <br>
+Sample standard deviation: 660624 <br>
 Tests used: 300 <br>
 
 # plans

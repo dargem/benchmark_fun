@@ -25,16 +25,14 @@ class Xoroshiro128plus : public Benchable {
 
     void runBenchmark(size_t iterations) override {
         for (size_t i{}; i < iterations; ++i) {
-            // shouldn't optimise out because internal state is being changed with
-            // getRandomDouble(); but what if printNextDouble() isn't called? would it optimise it
-            // out then?
-            getRandomDouble();
+            sink = getRandomDouble();
         }
     }
 
     void resetBenchmark() override { jump(); }
 
    private:
+    volatile double sink{};
     /**
      * @brief creates a random uniform double between [0,1)
      *
