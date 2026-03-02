@@ -49,16 +49,18 @@ as for the ~ first half of the list it'll be smaller than the mean (approximatel
 This makes branch prediction very easy, so sorting a list should result in better performance.
 
 ---Summary statistics for Branch Prediction Sorted Version--- <br>
-Sample mean cycles per test: 2.11696e+07 <br>
-Confidence interval: 2.10239e+07-2.13152e+07 <br>
-Sample standard deviation: 734015 <br>
-Tests used: 100 <br>
+Sample mean cycles per test: 1.21501e+06 <br>
+Confidence interval: 1.19809e+06-1.23193e+06 <br>
+Sample standard deviation: 148924 <br>
+Tests used: 300 <br>
 
 ---Summary statistics for Branch Prediction Unsorted Version--- <br>
-Sample mean cycles per test: 3.44761e+07 <br>
-Confidence interval: 3.43189e+07-3.46334e+07 <br>
-Sample standard deviation: 792475 <br>
-Tests used: 100 <br>
+Sample mean cycles per test: 2.17935e+06 <br>
+Confidence interval: 2.15972e+06-2.19897e+06 <br>
+Sample standard deviation: 172743 <br>
+Tests used: 300 <br>
+
+As seen decent ~80% performance increase by a seemingly strange optimization for the hardware.
 
 # Random access of char vs uint8_t vs bool vectors
 

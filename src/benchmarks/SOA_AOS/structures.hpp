@@ -7,20 +7,17 @@
 
 namespace benchmarks {
 
-namespace {
-// Entity types
-struct Entity {
-    double attack{1.0};
-    double defense{1.0};
-    double health{1.0};
-    double x{};
-    double y{};
-    double z{};
-};
-
-}  // namespace
-
 class AOS : public Benchable {
+   private:
+       struct Entity {
+        double attack{1.0};
+        double defense{1.0};
+        double health{1.0};
+        double x{};
+        double y{};
+        double z{};
+    };
+
    public:
     AOS(size_t numEntities) :
             Benchable(BenchType::STRUCTURE_LAYOUT, "Array of Structures Iteration"),

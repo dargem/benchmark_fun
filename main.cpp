@@ -45,7 +45,7 @@ void runBranchPredictionBenchmark() {
     BenchRunner& benchRunner = BenchRunner::getInstance();
     benchRunner.clearBenchables();
 
-    constexpr size_t ITERATIONS{100};
+    constexpr size_t ITERATIONS{120};
     constexpr size_t NUM_SAMPLES{300};
     constexpr int LIST_SIZE{10000};
     // this is 100 iterations over 10000 size list, sampling 300 times of that for each

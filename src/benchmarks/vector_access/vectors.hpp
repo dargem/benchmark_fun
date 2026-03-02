@@ -26,7 +26,6 @@ class VectorAccess : public Benchable {
     }
 
     void runBenchmark(size_t iterations) override {
-        T sink{};  // prevent dead code elimination
         if constexpr (std::same_as<T, bool>) {
             asm volatile("" : : "r"(elements.size()) : "memory");
         } else {
@@ -35,11 +34,9 @@ class VectorAccess : public Benchable {
 
         for (size_t i{}; i < iterations; ++i) {
             for (size_t index : indices) {
-                sink ^= elements[index];
+                sink = elements[index];
             }
         }
-
-        asm volatile("" : : "r"(sink) : "memory");
     }
 
     void resetBenchmark() override {
@@ -54,6 +51,7 @@ class VectorAccess : public Benchable {
     std::mt19937 rng;  // mersenne twister RNG
     std::vector<T> elements;
     std::vector<size_t> indices;
+    volatile T sink{};  // prevent dead code elimination
 
     constexpr static BenchType benchType{BenchType::VECTOR_BOOL_CHAR_RANDOM_ACCESS};
     static constexpr std::string_view name = []() {

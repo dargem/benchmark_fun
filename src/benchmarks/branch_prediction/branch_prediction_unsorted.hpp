@@ -40,17 +40,14 @@ class BranchPredictionUnsorted : public Benchable {
     }
 
     void runBenchmark(size_t iterations) override {
-        size_t successes{};
+        volatile size_t successes{};
         for (size_t i{}; i < iterations; ++i) {
             for (int number : randomNumbers) {
                 if (number > SIZE_NEEDED_FOR_SUCCESS) {
                     successes += 1;
-                    consume(successes);
                 }
             }
         }
-        // tell compiler this is volatile this benchmark from being optimized away by the compiler
-        asm volatile("" : : "r"(successes) : "memory");
     }
 
    private:
