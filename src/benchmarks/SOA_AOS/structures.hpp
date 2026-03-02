@@ -49,7 +49,7 @@ class AOS : public Benchable {
 class SOA : public Benchable {
    public:
     SOA(size_t numEntities) :
-            Benchable(BenchType::STRUCTURE_LAYOUT, "Structure of Array iteration"),
+            Benchable(BenchType::STRUCTURE_LAYOUT, "Structure of Arrays iteration"),
             attacks(numEntities, 1.0),
             defenses(numEntities, 1.0),
             healths(numEntities, 1.0),

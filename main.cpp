@@ -29,7 +29,7 @@ void runRNGBenchmark() {
     constexpr int RNG_SEED{50000};
 
     {
-        auto customRNG = std::make_unique<Xoroshiro128plus<true>>(RNG_SEED);
+        auto customRNG = std::make_unique<Xoroshiro128plus>(RNG_SEED);
         auto mersenneRNG = std::make_unique<MersenneTwister>();
         benchRunner.addBenchable(std::move(customRNG));
         benchRunner.addBenchable(std::move(mersenneRNG));

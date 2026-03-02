@@ -12,13 +12,12 @@
 
 namespace benchmarks {
 
-template <bool isObservable>
+// Credits to authors David Blackman and Sebastiano Vigna
+// https://xorshift.di.unimi.it/xoroshiro128plus.c
 class Xoroshiro128plus : public Benchable {
    public:
     // creates and seeds a generator
-    explicit Xoroshiro128plus(size_t seed) :
-            Benchable(BenchType::RANDOM_NUMBER_GENERATION,
-                      isObservable ? OBSERVABLE_NAME : UNOBSERVABLE_NAME) {
+    explicit Xoroshiro128plus(size_t seed) : Benchable(BenchType::RANDOM_NUMBER_GENERATION, NAME) {
         // splitmix64 modifies the seed so this is deterministic with 2 different modified numbers
         state[0] = splitmix64(seed);
         state[1] = splitmix64(seed);
@@ -34,13 +33,6 @@ class Xoroshiro128plus : public Benchable {
     }
 
     void resetBenchmark() override { jump(); }
-
-    void printNextDouble() {
-        if constexpr (isObservable) {
-            // just in case so its impossible to prove that internal state doesn't matter
-            std::cout << getRandomDouble() << std::endl;
-        }
-    }
 
    private:
     /**
@@ -101,8 +93,7 @@ class Xoroshiro128plus : public Benchable {
 
     // used to store internal state of RNG
     std::array<size_t, 2> state;
-    constexpr static std::string_view OBSERVABLE_NAME{"Potentially observable Xoroshiro RNG"};
-    constexpr static std::string_view UNOBSERVABLE_NAME{"Unobservable Xoroshiro RNG"};
+    constexpr static std::string_view NAME{"Xoroshiro128+ RNG"};
 };
 
 }  // namespace benchmarks

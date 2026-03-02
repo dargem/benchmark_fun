@@ -27,7 +27,7 @@ Sample mean cycles per test: 1.32802e+07
 Confidence interval: 1.25977e+07-1.39627e+07
 Sample standard deviation: 7.76792e+06
 Tests used: 500
----Summary statistics for Structure of Array iteration---
+---Summary statistics for Structure of Arrays iteration---
 Sample mean cycles per test: 7.21224e+06
 Confidence interval: 6.8314e+06-7.59308e+06
 Sample standard deviation: 4.33437e+06
