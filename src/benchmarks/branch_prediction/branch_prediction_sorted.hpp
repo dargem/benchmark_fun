@@ -10,7 +10,8 @@ namespace benchmarks {
 
 class BranchPredictionSorted : public BranchPredictionUnsorted {
    public:
-    BranchPredictionSorted(size_t listSize) : BranchPredictionUnsorted(listSize, NAME) {
+    BranchPredictionSorted(size_t listSize) :
+            BranchPredictionUnsorted(listSize, std::string(NAME)) {
         // On construction just sort the numbers of parent lazy way to do this
         std::vector<int>& numbers{BranchPredictionUnsorted::getInternalNumbersVector()};
         std::sort(numbers.begin(), numbers.end());

@@ -12,7 +12,7 @@ namespace benchmarks {
 class Benchable {
    public:
     Benchable(BenchType benchType, std::string name) :
-            benchType{benchType}, name{std::move(name)} {}
+            benchType{benchType}, name{std::string(name)} {}
 
     // call when reusing a benchmark, assume benchables will need some setup
     virtual void resetBenchmark() = 0;

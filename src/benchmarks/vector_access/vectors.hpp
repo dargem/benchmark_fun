@@ -14,7 +14,7 @@ template <typename T>
 class VectorAccess : public Benchable {
    public:
     VectorAccess(size_t numElements, size_t numIndices) :
-            Benchable(benchType, name),
+            Benchable(benchType, std::string(name)),
             rng(10000),
             elements(numElements, T{}),
             indices(numIndices) {

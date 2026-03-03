@@ -69,7 +69,8 @@ template <Floating T>
 class SOA : public Benchable {
    public:
     SOA(size_t numEntities) :
-            Benchable(BenchType::STRUCTURE_LAYOUT, "Structure of Arrays iteration"),
+            Benchable(BenchType::STRUCTURE_LAYOUT,
+                      std::format("Structure of Arrays iteration over {}", typeName)),
             attacks(numEntities, 1.0),
             defenses(numEntities, 1.0),
             healths(numEntities, 1.0),
@@ -106,6 +107,20 @@ class SOA : public Benchable {
     }
 
    private:
+    constexpr static std::string_view typeName = []() {
+        if constexpr (std::same_as<T, float>) {
+            return "float";
+        } else if constexpr (std::same_as<T, double>) {
+            return "double";
+        } else if constexpr (std::same_as<T, long double>) {
+            return "long double";
+        } else {
+            // this would fail prior to c++ 23 interestingly
+            static_assert(false, "Fallthrough on getting type name in structures.hpp");
+            return "holder";
+        }
+    }();
+
     std::vector<T> attacks;
     std::vector<T> defenses;
     std::vector<T> healths;

@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <random>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -12,13 +13,13 @@ namespace benchmarks {
 
 class BranchPredictionUnsorted : public Benchable {
    public:
-    BranchPredictionUnsorted(size_t listSize, std::string_view name) :
-            Benchable(BenchType::BRANCH_PREDICTION, name), listSize{listSize} {
+    BranchPredictionUnsorted(size_t listSize, std::string name) :
+            Benchable(BenchType::BRANCH_PREDICTION, std::string(name)), listSize{listSize} {
         resetBenchmark();
     }
 
     BranchPredictionUnsorted(size_t listSize) :
-            Benchable(BenchType::BRANCH_PREDICTION, NAME), listSize{listSize} {
+            Benchable(BenchType::BRANCH_PREDICTION, std::string(NAME)), listSize{listSize} {
         resetBenchmark();
     }
 
