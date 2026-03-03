@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <format>
 #include <string>
 #include <vector>
@@ -11,19 +12,19 @@ namespace benchmarks {
 
 template <typename T>
 // for float types
-concept Floating =
-    std::same_as<T, float> || std::same_as<T, double> || std::same_as<T, long double>;
+concept Floating = std::same_as<T, float> || std::same_as<T, double> ||
+                   std::same_as<T, long double> || std::same_as<T, uint8_t>;
 
 template <Floating T>
 class AOS : public Benchable {
    private:
     struct Entity {
-        T attack{1.0};
-        T defense{1.0};
-        T health{1.0};
-        T x{0.0};
-        T y{0.0};
-        T z{0.0};
+        T attack{1};
+        T defense{1};
+        T health{1};
+        T x{};
+        T y{};
+        T z{};
     };
 
    public:
@@ -57,6 +58,8 @@ class AOS : public Benchable {
             return "double";
         } else if constexpr (std::same_as<T, long double>) {
             return "long double";
+        } else if constexpr (std::same_as<T, uint8_t>) {
+            return "uint8_t";
         } else {
             // this would fail prior to c++ 23 interestingly
             static_assert(false, "Fallthrough on getting type name in structures.hpp");
@@ -71,9 +74,9 @@ class SOA : public Benchable {
     SOA(size_t numEntities) :
             Benchable(BenchType::STRUCTURE_LAYOUT,
                       std::format("Structure of Arrays iteration over {}", typeName)),
-            attacks(numEntities, 1.0),
-            defenses(numEntities, 1.0),
-            healths(numEntities, 1.0),
+            attacks(numEntities, 1),
+            defenses(numEntities, 1),
+            healths(numEntities, 1),
             x_locs(numEntities, {}),
             y_locs(numEntities, {}),
             z_locs(numEntities, {}) {}
@@ -114,6 +117,8 @@ class SOA : public Benchable {
             return "double";
         } else if constexpr (std::same_as<T, long double>) {
             return "long double";
+        } else if constexpr (std::same_as<T, uint8_t>) {
+            return "uint8_t";
         } else {
             // this would fail prior to c++ 23 interestingly
             static_assert(false, "Fallthrough on getting type name in structures.hpp");

@@ -90,20 +90,49 @@ void testSOA_AOS_Iteration() {
     BenchRunner& benchRunner = BenchRunner::getInstance();
     benchRunner.clearBenchables();
 
-    constexpr size_t NUMBER_ENTITIES{500000};
+    constexpr size_t NUM_ENTITIES{50000};
+    constexpr size_t ITERATIONS{1};
+    constexpr size_t SAMPLES{500};
 
     {
-        auto AOS_struct = std::make_unique<AOS<float>>(NUMBER_ENTITIES);
-        auto SOA_struct = std::make_unique<SOA<float>>(NUMBER_ENTITIES);
-        benchRunner.addBenchable(std::move(AOS_struct));
-        benchRunner.addBenchable(std::move(SOA_struct));
+        auto AOS_struct8bit = std::make_unique<AOS<uint8_t>>(NUM_ENTITIES);
+        auto SOA_struct8bit = std::make_unique<SOA<uint8_t>>(NUM_ENTITIES);
+        benchRunner.addBenchable(std::move(AOS_struct8bit));
+        benchRunner.addBenchable(std::move(SOA_struct8bit));
+        benchRunner.runBenchmarks(ITERATIONS, SAMPLES);
+        benchRunner.printResults();
+        benchRunner.clearBenchables();
     }
 
-    constexpr size_t ITERATIONS{2};
-    constexpr size_t SAMPLES{500};
-    benchRunner.runBenchmarks(ITERATIONS, SAMPLES);
-    benchRunner.printResults();
-    benchRunner.clearBenchables();
+    {
+        auto AOS_structFloat = std::make_unique<AOS<float>>(NUM_ENTITIES);
+        auto SOA_structFloat = std::make_unique<SOA<float>>(NUM_ENTITIES);
+        benchRunner.addBenchable(std::move(AOS_structFloat));
+        benchRunner.addBenchable(std::move(SOA_structFloat));
+        benchRunner.runBenchmarks(ITERATIONS, SAMPLES);
+        benchRunner.printResults();
+        benchRunner.clearBenchables();
+    }
+
+    {
+        auto AOS_structDouble = std::make_unique<AOS<double>>(NUM_ENTITIES);
+        auto SOA_structDouble = std::make_unique<SOA<double>>(NUM_ENTITIES);
+        benchRunner.addBenchable(std::move(AOS_structDouble));
+        benchRunner.addBenchable(std::move(SOA_structDouble));
+        benchRunner.runBenchmarks(ITERATIONS, SAMPLES);
+        benchRunner.printResults();
+        benchRunner.clearBenchables();
+    }
+
+    {
+        auto AOS_structLongDouble = std::make_unique<AOS<long double>>(NUM_ENTITIES);
+        auto SOA_structLongDouble = std::make_unique<SOA<long double>>(NUM_ENTITIES);
+        benchRunner.addBenchable(std::move(AOS_structLongDouble));
+        benchRunner.addBenchable(std::move(SOA_structLongDouble));
+        benchRunner.runBenchmarks(ITERATIONS, SAMPLES);
+        benchRunner.printResults();
+        benchRunner.clearBenchables();
+    }
 }
 
 int main() {

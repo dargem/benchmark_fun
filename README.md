@@ -11,8 +11,8 @@ Not sure why but probably due to rare events like os jitter, core migrations and
 # Structure of Arrays (SOA) vs Array of Structures (AOS) (SIMD test)
 
 Benchmark is iterating over an effective list of entities.
-An entity consists of the doubles: attack, defense, health, x, y and z.
-In an iteration it just simply ticks up x, y and z positions by 1.
+An entity consists of the values: attack, defense, health, x, y and z.
+In an iteration it just simply adds x, y and z values by 1.
 An array of structure is just a vector of Entity instances, but a better way to do it can be having a structure of arrays.
 Rather the collection itself is a class, with vectors for each attack, defense, health and etc.
 This can allow vectorization of the code where the CPU performs a single operation on multiple pieces of data in parallel,
@@ -21,20 +21,88 @@ This can lead to massive performance increases.
 Cache locality is also arguably better if you only need to iterate over say the coordinates of an entity,
 with AOS it would load the whole entity into the cache.
 If that entity is large thats obviously inefficient and it might be pushing out actually useful stuff.
+Iterating over a float and a long double it would be expected that smaller data types will benefit from SIMD more
+Note sizes are implementation defined though, while they are 4 and 16 bytes on my machine respectively,
+a long double is only guaranteed to be as long as a double for example.
 
----Summary statistics for Array of Structures Iteration---
-Sample mean cycles per test: 1.32802e+07
-Confidence interval: 1.25977e+07-1.39627e+07
-Sample standard deviation: 7.76792e+06
-Tests used: 500
----Summary statistics for Structure of Arrays iteration---
-Sample mean cycles per test: 7.21224e+06
-Confidence interval: 6.8314e+06-7.59308e+06
-Sample standard deviation: 4.33437e+06
-Tests used: 500
+---Summary statistics for Array of Structures Iteration over uint8_t--- <br>
+Sample mean cycles per test: 44358.8 <br>
+Confidence interval: 44089.3-44628.3 <br>
+Sample standard deviation: 3067.37 <br>
+Tests used: 500 <br>
 
-Has some pretty major performance improvements with ~double the iteration speed.
-Obviously makes the code far less readable performance improvements can be useful sometimes.
+---Summary statistics for Structure of Arrays iteration over uint8_t--- <br>
+Sample mean cycles per test: 4470.62 <br>
+Confidence interval: 4354.22-4587.03 <br>
+Sample standard deviation: 1324.79 <br>
+Tests used: 500 <br>
+
+Unbelievable 10x speed increases due to SIMD, SOA is way faster here when operating on the 1 byte unsigned integers.
+A more realistic example using floats seeing as these are coordinates.
+
+---Summary statistics for Array of Structures Iteration over float--- <br>
+Sample mean cycles per test: 91756.3 <br>
+Confidence interval: 87572-95940.6 <br>
+Sample standard deviation: 47621.7 <br>
+Tests used: 500 <br>
+
+---Summary statistics for Structure of Arrays iteration over float--- <br>
+Sample mean cycles per test: 31608.8 <br>
+Confidence interval: 29563.1-33654.5 <br>
+Sample standard deviation: 23282 <br>
+Tests used: 500 <br>
+
+Still ~3x speed increase which is incredible on the 4 byte floats.
+
+---Summary statistics for Array of Structures Iteration over double--- <br>
+Sample mean cycles per test: 91581.5 <br>
+Confidence interval: 89847.1-93315.9 <br>
+Sample standard deviation: 19739.5 <br>
+Tests used: 500 <br>
+
+---Summary statistics for Structure of Arrays iteration over double--- <br>
+Sample mean cycles per test: 54189.8 <br>
+Confidence interval: 53253.1-55126.5 <br>
+Sample standard deviation: 10660.7 <br>
+Tests used: 500 <br>
+
+Bit under 2x speed increases which is still great for the 8 byte doubles.
+Pattern here is fairly obvious, smaller data types take greater advantage of SIMD.
+SIMD performs operations on multiple pieces of data in the CPU's register at once,
+smaller data types lets the cpu pack more elements in the same register and operate on more data at the same time.
+
+---Summary statistics for Array of Structures Iteration over long double--- <br>
+Sample mean cycles per test: 4.58413e+06 <br>
+Confidence interval: 4.48494e+06-4.68332e+06 <br>
+Sample standard deviation: 1.12893e+06 <br>
+Tests used: 500 <br>
+
+---Summary statistics for Structure of Arrays iteration over long double--- <br>
+Sample mean cycles per test: 4.3403e+06 <br>
+Confidence interval: 4.27143e+06-4.40917e+06 <br>
+Sample standard deviation: 783833 <br>
+Tests used: 500 <br>
+
+Performance gains almost completely disappear with the 16 byte long double.
+SOA is still statistically significantly faster (p < 0.05) but its a very minor speed difference.
+The difference could honestly just be due to better cache locality. <br>
+
+Obviously trying to vectorize code makes it far less readable,
+but up to a 10x performance increase is obviously enticing and a must have for stuff like computer graphics.
+
+---Summary statistics for Array of Structures Iteration over long double--- <br>
+Sample mean cycles per test: 2.80576e+07 <br>
+Confidence interval: 2.74188e+07-2.86963e+07 <br>
+Sample standard deviation: 7.26994e+06 <br>
+Tests used: 500 <br>
+
+---Summary statistics for Structure of Arrays iteration over long double--- <br>
+Sample mean cycles per test: 2.3884e+07 <br>
+Confidence interval: 2.3548e+07-2.422e+07 <br>
+Sample standard deviation: 3.8239e+06 <br>
+Tests used: 500 <br>
+
+Iterate over a long double which is 16 byte on my machine
 
 # Sorting to help with branch prediction
 
