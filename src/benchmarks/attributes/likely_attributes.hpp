@@ -13,14 +13,13 @@ enum class Attribute { LIKELY, UNLIKELY, DEFAULT };
 
 // C++ 20 introduces 2 questionably useful attributes [[likely]] and [[unlikely]] which supposedly
 // give hints to the compiler about whether a path of execution is more or less likely than another
-// pass of execution. This could help with branch prediction theoretically, the compiler could also
-// not theoretically completely ignore it.
+// pass of execution. The compiler can then optimize with that in mind
 template <Attribute A>
-class BranchPredictionUnsorted : public Benchable {
+class AttributeOptimisation : public Benchable {
    public:
-    BranchPredictionUnsorted(size_t listSize) :
+    AttributeOptimisation(size_t listSize) :
             Benchable(BenchType::ATTRIBUTE_BRANCH_PREDICTION,
-                      std::format("Branch Prediction with attribute {}"), ATTRIBUTE_NAME),
+                      std::format("Branch Prediction with attribute {}", ATTRIBUTE_NAME)),
             listSize{listSize} {
         resetBenchmark();
     }
@@ -77,27 +76,15 @@ class BranchPredictionUnsorted : public Benchable {
     }
 
    private:
-    static constexpr std::string_view ATTRIBUTE_NAME = []() {
-        switch (A) {
-        case LIKELY:
-            return "LIKELY";
-        case UNLIKELY:
-            return "UNLIKELY";
-        case DEFAULT:
-            return "DEFAULT BEHAVIOUR";
-        }
-        return "FALLTHROUGH ISSUE";
-    }();
-
     std::vector<int> randomNumbers;
-    const size_t listSize;
+    size_t listSize;
     static constexpr std::string_view ATTRIBUTE_NAME = []() {
         switch (A) {
-        case LIKELY:
+        case Attribute::LIKELY:
             return "LIKELY";
-        case UNLIKELY:
+        case Attribute::UNLIKELY:
             return "UNLIKELY";
-        case DEFAULT:
+        case Attribute::DEFAULT:
             return "DEFAULT BEHAVIOUR";
         }
         return "FALLTHROUGH ISSUE";

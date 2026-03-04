@@ -2,6 +2,7 @@
 #include <memory>
 
 #include "src/benchmarks/SOA_AOS/structures.hpp"
+#include "src/benchmarks/attributes/likely_attributes.hpp"
 #include "src/benchmarks/bench_runner.hpp"
 #include "src/benchmarks/branch_prediction/branch_prediction_sorted.hpp"
 #include "src/benchmarks/branch_prediction/branch_prediction_unsorted.hpp"
@@ -12,6 +13,8 @@
 #include "src/timer.hpp"
 
 using benchmarks::AOS;
+using benchmarks::Attribute;
+using benchmarks::AttributeOptimisation;
 using benchmarks::Benchable;
 using benchmarks::BenchRunner;
 using benchmarks::BranchPredictionSorted;
@@ -136,12 +139,37 @@ void testSOA_AOS_Iteration() {
     }
 }
 
+void runAttributeBenchmark() {
+    BenchRunner& benchRunner = BenchRunner::getInstance();
+    benchRunner.clearBenchables();
+
+    constexpr static size_t LIST_SIZE{20000};
+
+    {
+        auto likely = std::make_unique<AttributeOptimisation<Attribute::LIKELY>>(LIST_SIZE);
+        auto unlikely = std::make_unique<AttributeOptimisation<Attribute::UNLIKELY>>(LIST_SIZE);
+        auto defaultBench = std::make_unique<AttributeOptimisation<Attribute::DEFAULT>>(LIST_SIZE);
+
+        benchRunner.addBenchable(std::move(likely));
+        benchRunner.addBenchable(std::move(unlikely));
+        benchRunner.addBenchable(std::move(defaultBench));
+    }
+
+    constexpr static size_t ITERATIONS{10};
+    constexpr static size_t SAMPLES{5000};
+
+    benchRunner.runBenchmarks(ITERATIONS, SAMPLES);
+    benchRunner.printResults();
+    benchRunner.clearBenchables();
+}
+
 int main() {
     try {
-        runRNGBenchmark();
-        runBranchPredictionBenchmark();
-        runVectorRandomAccessBenchmark();
-        testSOA_AOS_Iteration();
+        // runRNGBenchmark();
+        // runBranchPredictionBenchmark();
+        // runVectorRandomAccessBenchmark();
+        // testSOA_AOS_Iteration();
+        runAttributeBenchmark();
     } catch (const std::runtime_error e) {
         std::cout << "Error: " << e.what() << std::endl;
     }
