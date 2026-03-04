@@ -2,6 +2,7 @@
 
 #include <boost/math/distributions/fisher_f.hpp>
 #include <boost/math/distributions/students_t.hpp>
+#include <cassert>
 #include <numeric>
 #include <vector>
 
@@ -21,11 +22,12 @@ ConfidenceInterval generateConfidenceInterval(std::vector<T> samples) {
     // use a 95% confidence interval so use 5% alpha (5% chance of a type 1 error)
     constexpr static double ALPHA{0.05};
     size_t n = samples.size();  // number of samples
+    assert(n >= 30 && "Want more than 30 samples so CLT kicks in (distribution sample means ~N)");
 
     ConfidenceInterval confidenceInterval{};
     // confidence interval is x_bar ± t * (s / sqrt(n))
     // first try to find x_bar aka point estimate
-    T sum = std::accumulate(samples.begin(), samples.end(), 0,
+    T sum = std::accumulate(samples.begin(), samples.end(), 0.0,
                             [](T sum, T sample) { return sum + sample; });
     double sampleMean = static_cast<double>(sum) / n;
     confidenceInterval.pointEstimate = sampleMean;
@@ -37,7 +39,7 @@ ConfidenceInterval generateConfidenceInterval(std::vector<T> samples) {
 
     // then find sample deviation, first finding sum of cubed deviations
     T cubedDeviations =
-        std::accumulate(samples.begin(), samples.end(), 0, [sampleMean](T currentSum, T sample) {
+        std::accumulate(samples.begin(), samples.end(), 0.0, [sampleMean](T currentSum, T sample) {
             return currentSum + std::pow(sample - sampleMean, 2);
         });
     // then divide it by n-1 samples and root it to get an unbiased estimator of standard deviation
