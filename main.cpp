@@ -8,6 +8,7 @@
 #include "src/benchmarks/rng/mersenne_twister.hpp"
 #include "src/benchmarks/rng/xoroshiro128+.hpp"
 #include "src/benchmarks/vector_access/vectors.hpp"
+#include "src/stats/student_T_tests.hpp"
 #include "src/timer.hpp"
 
 using benchmarks::AOS;

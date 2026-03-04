@@ -87,22 +87,8 @@ Performance gains almost completely disappear with the 16 byte long double.
 SOA is still statistically significantly faster (p < 0.05) but its a very minor speed difference.
 The difference could honestly just be due to better cache locality. <br>
 
-Obviously trying to vectorize code makes it far less readable,
-but up to a 10x performance increase is obviously enticing and a must have for stuff like computer graphics.
-
----Summary statistics for Array of Structures Iteration over long double--- <br>
-Sample mean cycles per test: 2.80576e+07 <br>
-Confidence interval: 2.74188e+07-2.86963e+07 <br>
-Sample standard deviation: 7.26994e+06 <br>
-Tests used: 500 <br>
-
----Summary statistics for Structure of Arrays iteration over long double--- <br>
-Sample mean cycles per test: 2.3884e+07 <br>
-Confidence interval: 2.3548e+07-2.422e+07 <br>
-Sample standard deviation: 3.8239e+06 <br>
-Tests used: 500 <br>
-
-Iterate over a long double which is 16 byte on my machine
+Obviously trying to vectorize code makes it far less readable and hard to maintain + understand,
+but up to a 10x performance increase is a must have for some performance critical systems like computer graphics.
 
 # Sorting to help with branch prediction
 
@@ -176,7 +162,6 @@ I assume the cache is managed smartly and since the size_t vector can be predict
 it doesn't end up wasting a lot of space in the cache.
 
 ---Summary statistics for bool vector random access--- <br>
-
 Sample mean cycles per test: 807507 (8.075e+05)<br>
 Confidence interval: 787985-827030 <br>
 Sample standard deviation: 314599 <br>
@@ -197,7 +182,7 @@ Tests used: 1000 <br>
 # XOROSHIRO 128+ vs Inbuilt Mersenne Twister
 
 Considerably better results from the xoroshiro 128++ rng and the inbuilt mersenne twister rng.
-Was expecting xoroshiro128+ to be substantially faster and is 3x faster number generation is still very welcome.
+Was expecting xoroshiro128+ to be substantially faster and it is, 3x faster number generation is very welcome.
 Xoroshiro also has better statistical properties.
 
 ---Summary statistics for Xoroshiro128+ RNG--- <br>
