@@ -85,7 +85,17 @@ Tests used: 500 <br>
 
 Performance gains almost completely disappear with the 16 byte long double.
 SOA is still statistically significantly faster (p < 0.05) but its a very minor speed difference.
-The difference could honestly just be due to better cache locality. <br>
+The difference could honestly just be due to better cache locality.
+The cpu this was run on is based on the zen 4 architecture which has support for AVX-512 instruction set (512 bit aka 64 byte simd instructions),
+though through a trick double pumping them through 256 bit registers.
+Regardless even using AVX2 instructions for 256 bit registers you would expect to fit 2 long doubles (128 each),
+but there's clearly not a sizeable enough performance increase.
+On x86-64 linux, long double is 80 bit extended precision stored in 16 bytes, 10 data and 6 padding
+(seems like a lot of wasted space but guess it needs to be 8 byte aligned).
+AVX2 and AVX512 have no support for 80 bit floats, just vectorizing 32 bit and 64 bit floats.
+So the compiler uses scalar instructions and the very minimal performance increases are just due to the better cache locality which is interesting.
+
+<br>
 
 Obviously trying to vectorize code makes it far less readable and hard to maintain + understand,
 but up to a 10x performance increase is a must have for some performance critical systems like computer graphics.
