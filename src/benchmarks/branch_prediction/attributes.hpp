@@ -41,6 +41,7 @@ class BranchPredictionUnsorted : public Benchable {
 
     void runBenchmark(size_t iterations) override {
         volatile size_t successes{};
+        volatile size_t equalities{};
         for (size_t i{}; i < iterations; ++i) {
             for (int number : randomNumbers) {
                 // This has a 95% chance for a success here with a uniform distribution. So I'm
@@ -48,27 +49,27 @@ class BranchPredictionUnsorted : public Benchable {
                 if constexpr (A == Attribute::LIKELY) {
                     if (number > SIZE_NEEDED_FOR_SUCCESS) [[likely]] {
                         successes += 1;
-                    } else {
-                        successes -= 1;
+                    } else if (number == SIZE_NEEDED_FOR_SUCCESS) [[unlikely]] {
+                        equalities += 1;
                     }
                 }
 
                 // Lie to compiler that this event is unlikely, could tank performance theoretically
                 // if the compiler believes me naively and reorders this branch into something like
-                // number <= SIZE_NEEDED_FOR_SUCCESS to check the else condition first effectively
+                // number == SIZE_NEEDED_FOR_SUCCESS to check the else condition first effectively
                 if constexpr (A == Attribute::UNLIKELY) {
-                    if (number > SIZE_NEEDED_FOR_SUCCESS) [[unlikely]] {
+                    if (number > SIZE_NEEDED_FOR_SUCCESS) [[unlikely]] {  // lie 95% is unlikely
                         successes += 1;
-                    } else {
-                        successes -= 1;
+                    } else if (number == SIZE_NEEDED_FOR_SUCCESS) [[likely]] {  // lie ~0% is likely
+                        equalities += 1;
                     }
                 }
-                // Don't inform the compiler of anything, it may just leave it up to the CPU
+                // Don't inform the compiler of anything extra
                 if constexpr (A == Attribute::DEFAULT) {
                     if (number > SIZE_NEEDED_FOR_SUCCESS) {
                         successes += 1;
-                    } else {
-                        successes -= 1;
+                    } else if (number == SIZE_NEEDED_FOR_SUCCESS) {
+                        equalities += 1;
                     }
                 }
             }
