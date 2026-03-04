@@ -207,6 +207,51 @@ Confidence interval: 8.75627e+06-8.90639e+06 <br>
 Sample standard deviation: 660624 <br>
 Tests used: 300 <br>
 
+# LIKELY / UNLIKELY Attributes
+
+C++ 20 introduces the [[likely]] and [[unlikely]] attributes which are "hints" to inform the compiler if a path of execution is more or less likely than another.
+
+```
+if constexpr (A == Attribute::UNLIKELY) {
+    if (number > SIZE_NEEDED_FOR_SUCCESS) [[unlikely]] {  // lie 95% is unlikely
+        successes += 1;
+    } else if (number == SIZE_NEEDED_FOR_SUCCESS) [[likely]] {  // lie ~0% is likely
+        equalities += 1;
+    }
+}
+```
+
+This benchmarks 3 scenarios like above, the randomly generated number has a ~95% chance to be > size_needed_for_success.
+For the number to be equal this was exceedingly rare (1/100000) so lazily evaluation this after the first if should improve performance.
+This uses the [[unlikely]] attribute and [[likely]] attribute to lie to the compiler.
+If it trusts me this would theoretically tank performance as it would evaluate the unlikely condition first thinking that path of execution was "more likely".
+This is obviously just a hint to the compiler, definitely compiler specific and the compiler could just completely ignore it.
+This tests with attributes correct (LIKELY), with attributes wrong (UNLIKELY) and without attributes (DEFAULT Behavior).
+
+```
+---Summary statistics for Branch Prediction with attribute LIKELY---
+Sample mean cycles per test: 208202
+Confidence interval: 207068-209336
+Sample standard deviation: 40907.4
+Tests used: 5000
+
+---Summary statistics for Branch Prediction with attribute UNLIKELY---
+Sample mean cycles per test: 436717
+Confidence interval: 434746-438688
+Sample standard deviation: 71103.2
+Tests used: 5000
+
+---Summary statistics for Branch Prediction with attribute DEFAULT BEHAVIOR---
+Sample mean cycles per test: 210914
+Confidence interval: 209475-212352
+Sample standard deviation: 51878.2
+Tests used: 5000
+```
+
+There is a statistically significant result that default behavior performs slightly worse surprisingly, though difference is very mild.
+Using attributes incorrectly though tanks performance, more than 2x slower with the reversed attributes.
+In a handwavy sense Makes sense its ~2x slower seeing its doubled the number of evaluations needed.
+
 # plans
 
 - Benchmarks for different types of containers, eg vector vs sparse set vs linked list vs colony/hive

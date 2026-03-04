@@ -143,7 +143,7 @@ void runAttributeBenchmark() {
     BenchRunner& benchRunner = BenchRunner::getInstance();
     benchRunner.clearBenchables();
 
-    constexpr static size_t LIST_SIZE{20000};
+    constexpr static size_t LIST_SIZE{50000};
 
     {
         auto likely = std::make_unique<AttributeOptimisation<Attribute::LIKELY>>(LIST_SIZE);
@@ -155,7 +155,7 @@ void runAttributeBenchmark() {
         benchRunner.addBenchable(std::move(defaultBench));
     }
 
-    constexpr static size_t ITERATIONS{10};
+    constexpr static size_t ITERATIONS{5};
     constexpr static size_t SAMPLES{5000};
 
     benchRunner.runBenchmarks(ITERATIONS, SAMPLES);

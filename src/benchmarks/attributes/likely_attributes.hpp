@@ -85,7 +85,7 @@ class AttributeOptimisation : public Benchable {
         case Attribute::UNLIKELY:
             return "UNLIKELY";
         case Attribute::DEFAULT:
-            return "DEFAULT BEHAVIOUR";
+            return "DEFAULT BEHAVIOR";
         }
         return "FALLTHROUGH ISSUE";
     }();
