@@ -59,17 +59,35 @@ class ExecutionPolicies : public Benchable {
         for (size_t i{}; i < iterations; ++i) {
             if constexpr (P == Policy::SEQUENCED) {
                 std::for_each(std::execution::seq, x_pos.begin(), x_pos.end(),
-                              [x_transform](float x_coord) { return x_coord + x_transform; });
+                              [x_transform](float& x_coord) { x_coord += x_transform; });
                 std::for_each(std::execution::seq, y_pos.begin(), y_pos.end(),
-                              [x_transform](float x_coord) { return x_coord + x_transform; });
+                              [y_transform](float& y_coord) { y_coord += y_transform; });
                 std::for_each(std::execution::seq, z_pos.begin(), z_pos.end(),
-                              [x_transform](float x_coord) { return x_coord + x_transform; });
+                              [z_transform](float& z_coord) { z_coord += z_transform; });
             }
             if constexpr (P == Policy::UNSEQUENCED) {
+                std::for_each(std::execution::unseq, x_pos.begin(), x_pos.end(),
+                              [x_transform](float& x_coord) { x_coord += x_transform; });
+                std::for_each(std::execution::unseq, y_pos.begin(), y_pos.end(),
+                              [y_transform](float& y_coord) { y_coord += y_transform; });
+                std::for_each(std::execution::unseq, z_pos.begin(), z_pos.end(),
+                              [z_transform](float& z_coord) { z_coord += z_transform; });
             }
             if constexpr (P == Policy::PARALLEL) {
+                std::for_each(std::execution::par, x_pos.begin(), x_pos.end(),
+                              [x_transform](float& x_coord) { x_coord += x_transform; });
+                std::for_each(std::execution::par, y_pos.begin(), y_pos.end(),
+                              [y_transform](float& y_coord) { y_coord += y_transform; });
+                std::for_each(std::execution::par, z_pos.begin(), z_pos.end(),
+                              [z_transform](float& z_coord) { z_coord += z_transform; });
             }
             if constexpr (P == Policy::PARALLEL_UNSEQUENCED) {
+                std::for_each(std::execution::par_unseq, x_pos.begin(), x_pos.end(),
+                              [x_transform](float& x_coord) { x_coord += x_transform; });
+                std::for_each(std::execution::par_unseq, y_pos.begin(), y_pos.end(),
+                              [y_transform](float& y_coord) { y_coord += y_transform; });
+                std::for_each(std::execution::par_unseq, z_pos.begin(), z_pos.end(),
+                              [z_transform](float& z_coord) { z_coord += z_transform; });
             }
         }
     }

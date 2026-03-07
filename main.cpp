@@ -170,7 +170,7 @@ void runExecutionPolicyBenchmark() {
     BenchRunner& benchRunner = BenchRunner::getInstance();
     benchRunner.clearBenchables();
 
-    constexpr static size_t NUM_COORDINATES{50000};
+    constexpr static size_t NUM_COORDINATES{500000};
 
     {
         // clang-format off
@@ -186,8 +186,8 @@ void runExecutionPolicyBenchmark() {
         benchRunner.addBenchable(std::move(par_unseq));
     }
 
-    constexpr static size_t ITERATIONS{30};
-    constexpr static size_t SAMPLES{500};
+    constexpr static size_t ITERATIONS{10};
+    constexpr static size_t SAMPLES{50};
 
     benchRunner.runBenchmarks(ITERATIONS, SAMPLES);
     benchRunner.printResults();

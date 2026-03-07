@@ -34,7 +34,12 @@ if(POLICY CMP0167)
     cmake_policy(SET CMP0167 NEW)
 endif()
 find_package(Boost REQUIRED)
-target_link_libraries(benchmarks PRIVATE Boost::boost)
+find_package(TBB REQUIRED)
+
+target_link_libraries(benchmarks PRIVATE 
+    Boost::boost
+    TBB::tbb
+)
 
 target_compile_features(benchmarks PRIVATE cxx_std_20)
 
