@@ -7,15 +7,13 @@
 
 #include "src/benchmarks/bench_types.hpp"
 #include "src/benchmarks/benchable.hpp"
+#include "utils/concepts.hpp"
+
+using utils::Numeric;
 
 namespace benchmarks {
 
-template <typename T>
-// for float types
-concept Floating = std::same_as<T, float> || std::same_as<T, double> ||
-                   std::same_as<T, long double> || std::same_as<T, uint8_t>;
-
-template <Floating T>
+template <Numeric T>
 class AOS : public Benchable {
    private:
     struct Entity {
@@ -70,7 +68,7 @@ class AOS : public Benchable {
     }();
 };
 
-template <Floating T>
+template <Numeric T>
 class SOA : public Benchable {
    public:
     SOA(size_t numEntities) :
