@@ -170,7 +170,7 @@ void runExecutionPolicyBenchmark() {
     BenchRunner& benchRunner = BenchRunner::getInstance();
     benchRunner.clearBenchables();
 
-    constexpr static size_t NUM_COORDINATES{500000};
+    constexpr static size_t NUM_COORDINATES{50000};
 
     {
         // clang-format off

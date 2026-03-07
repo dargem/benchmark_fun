@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <execution>
 #include <format>
 #include <random>
@@ -56,38 +57,38 @@ class ExecutionPolicies : public Benchable {
         const float y_transform = std::get<1>(transformationVector);
         const float z_transform = std::get<2>(transformationVector);
 
+        const auto heavyTransform = [](float& coord, float transform) {
+            float v = coord;
+            for (size_t k{}; k < 4; ++k) {
+                v = std::sin(v + transform) + std::cos(v);
+            }
+            coord = v;
+        };
+
+        const auto applyForEach = [&](auto execPolicy, std::vector<float>& coords,
+                                      float transform) {
+            std::for_each(
+                execPolicy, coords.begin(), coords.end(),
+                [transform, &heavyTransform](float& coord) { heavyTransform(coord, transform); });
+        };
+
         for (size_t i{}; i < iterations; ++i) {
             if constexpr (P == Policy::SEQUENCED) {
-                std::for_each(std::execution::seq, x_pos.begin(), x_pos.end(),
-                              [x_transform](float& x_coord) { x_coord += x_transform; });
-                std::for_each(std::execution::seq, y_pos.begin(), y_pos.end(),
-                              [y_transform](float& y_coord) { y_coord += y_transform; });
-                std::for_each(std::execution::seq, z_pos.begin(), z_pos.end(),
-                              [z_transform](float& z_coord) { z_coord += z_transform; });
-            }
-            if constexpr (P == Policy::UNSEQUENCED) {
-                std::for_each(std::execution::unseq, x_pos.begin(), x_pos.end(),
-                              [x_transform](float& x_coord) { x_coord += x_transform; });
-                std::for_each(std::execution::unseq, y_pos.begin(), y_pos.end(),
-                              [y_transform](float& y_coord) { y_coord += y_transform; });
-                std::for_each(std::execution::unseq, z_pos.begin(), z_pos.end(),
-                              [z_transform](float& z_coord) { z_coord += z_transform; });
-            }
-            if constexpr (P == Policy::PARALLEL) {
-                std::for_each(std::execution::par, x_pos.begin(), x_pos.end(),
-                              [x_transform](float& x_coord) { x_coord += x_transform; });
-                std::for_each(std::execution::par, y_pos.begin(), y_pos.end(),
-                              [y_transform](float& y_coord) { y_coord += y_transform; });
-                std::for_each(std::execution::par, z_pos.begin(), z_pos.end(),
-                              [z_transform](float& z_coord) { z_coord += z_transform; });
-            }
-            if constexpr (P == Policy::PARALLEL_UNSEQUENCED) {
-                std::for_each(std::execution::par_unseq, x_pos.begin(), x_pos.end(),
-                              [x_transform](float& x_coord) { x_coord += x_transform; });
-                std::for_each(std::execution::par_unseq, y_pos.begin(), y_pos.end(),
-                              [y_transform](float& y_coord) { y_coord += y_transform; });
-                std::for_each(std::execution::par_unseq, z_pos.begin(), z_pos.end(),
-                              [z_transform](float& z_coord) { z_coord += z_transform; });
+                applyForEach(std::execution::seq, x_pos, x_transform);
+                applyForEach(std::execution::seq, y_pos, y_transform);
+                applyForEach(std::execution::seq, z_pos, z_transform);
+            } else if constexpr (P == Policy::UNSEQUENCED) {
+                applyForEach(std::execution::unseq, x_pos, x_transform);
+                applyForEach(std::execution::unseq, y_pos, y_transform);
+                applyForEach(std::execution::unseq, z_pos, z_transform);
+            } else if constexpr (P == Policy::PARALLEL) {
+                applyForEach(std::execution::par, x_pos, x_transform);
+                applyForEach(std::execution::par, y_pos, y_transform);
+                applyForEach(std::execution::par, z_pos, z_transform);
+            } else if constexpr (P == Policy::PARALLEL_UNSEQUENCED) {
+                applyForEach(std::execution::par_unseq, x_pos, x_transform);
+                applyForEach(std::execution::par_unseq, y_pos, y_transform);
+                applyForEach(std::execution::par_unseq, z_pos, z_transform);
             }
         }
     }
