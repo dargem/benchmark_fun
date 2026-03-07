@@ -6,6 +6,7 @@
 #include "src/benchmarks/bench_runner.hpp"
 #include "src/benchmarks/branch_prediction/branch_prediction_sorted.hpp"
 #include "src/benchmarks/branch_prediction/branch_prediction_unsorted.hpp"
+#include "src/benchmarks/execution_policies/policies.hpp"
 #include "src/benchmarks/rng/mersenne_twister.hpp"
 #include "src/benchmarks/rng/xoroshiro128+.hpp"
 #include "src/benchmarks/vector_access/vectors.hpp"

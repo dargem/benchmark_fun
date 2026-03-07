@@ -1,6 +1,7 @@
 #pragma once
 
 #include <format>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -24,9 +25,40 @@ class ExecutionPolicyBenchmark : public Benchable {
             x_pos(coordinateSize, float{}),
             y_pos(coordinateSize, float{}),
             z_pos(coordinateSize, float{}) {
-        asm volatile("" : : "r"(x_pos.data() : "memory"));
-        asm volatile("" : : "r"(y_pos.data() : "memory"));
-        asm volatile("" : : "r"(z_pos.data() : "memory"));
+        asm volatile("" : : "r"(x_pos.data()) : "memory");
+        asm volatile("" : : "r"(y_pos.data()) : "memory");
+        asm volatile("" : : "r"(z_pos.data()) : "memory");
+
+        std::random_device rd;
+        std::mt19937 generator(rd);
+        std::uniform_real_distribution<float> distribution(-10, 10);
+
+        std::get<0>(transformationVector) = distribution(generator);
+        std::get<1>(transformationVector) = distribution(generator);
+        std::get<2>(transformationVector) = distribution(generator);
+    }
+
+    void resetBenchmark() override {
+        std::random_device rd;
+        std::mt19937 generator(rd());
+        std::uniform_real_distribution<float> distribution(-10, 10);
+
+        std::get<0>(transformationVector) = distribution(generator);
+        std::get<1>(transformationVector) = distribution(generator);
+        std::get<2>(transformationVector) = distribution(generator);
+    }
+
+    void runBenchmark(size_t iterations) override {
+        for (size_t i{}; i < iterations; ++i) {
+            if constexpr (P == ExecutionPolicy::SEQUENCED) {
+            }
+            if constexpr (P == ExecutionPolicy::UNSEQUENCED) {
+            }
+            if constexpr (P == ExecutionPolicy::PARALLEL) {
+            }
+            if constexpr (P == ExecutionPolicy::PARALLEL_UNSEQUENCED) {
+            }
+        }
     }
 
    private:
@@ -44,6 +76,8 @@ class ExecutionPolicyBenchmark : public Benchable {
             }
             return "fallback, should never see this";
         });
+    std::tuple<float, float, float> transformationVector;  // x, y, z vector
+    // SOA coordinates
     std::vector<float> x_pos;
     std::vector<float> y_pos;
     std::vector<float> z_pos;
