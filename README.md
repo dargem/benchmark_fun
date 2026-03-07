@@ -6,7 +6,7 @@ probably doesn't work on 32 bit systems due to hacky stuff!
 # Benches!
 
 Seems like standard deviation can be out of wack occasionally.
-Not sure why but probably due to rare events like os jitter, core migrations and stuff like that which can skew one sample to take far longer.
+Not sure why but probably due to rare events like os jitter that can skew one sample to take far longer.
 
 # Structure of Arrays (SOA) vs Array of Structures (AOS) (SIMD test)
 
@@ -107,6 +107,56 @@ So the compiler uses scalar instructions and the very minimal performance increa
 
 Obviously trying to vectorize code makes it far less readable and hard to maintain + understand,
 but up to a 10x performance increase is a must have for some performance critical systems like computer graphics.
+
+# Execution Policies
+
+C++ 17 introduces some execution policies which can be used on some range based algorithms in the standard library.
+These execution policies are:
+
+- std::execution::seq (default sequential iteration)
+- std::execution::par (allows parallel iteration)
+- std::execution::par_unseq (allows parallel and non-sequential iteration)
+- std::execution::unseq (C++20 allows non-sequential but not parallel iteration)
+
+To use std::execution::par is to promise the function can be safely executed in parallel.
+So while the implementation is free to use a parallel implementation it is also free not to.
+par_unseq has a stronger guarantee that allows interweaving the execution of multiple function calls in the same thread.
+This can let the code be vectorized and make use of SIMD if it is vectorization safe.
+
+This benchmarked a few different scenarios using iteration over coordinates represented as SOA.
+The first version was just a translation on the position by adding a vector.
+All execution policies had the exact same performance, likely because the compiler was already vectorizing it for seq/unseq.
+While parallel iteration was allowed operations were memory bandwidth bound, so the OS didn't parallelize operations.
+This was modified then to do some more heavy (though unrealistic) operations on the data, needing to calc many sine functions.
+
+```
+---Summary statistics for Sequenced Execution Policy Benchmark---
+Sample mean cycles per test: 1.51564e+08
+Confidence interval: 1.48964e+08-1.54163e+08
+Sample standard deviation: 9.14725e+06
+Tests used: 50
+
+---Summary statistics for Unsequenced Execution Policy Benchmark---
+Sample mean cycles per test: 1.49839e+08
+Confidence interval: 1.46747e+08-1.52931e+08
+Sample standard deviation: 1.08789e+07
+Tests used: 50
+
+---Summary statistics for Parallel Execution Policy Benchmark---
+Sample mean cycles per test: 1.92779e+07
+Confidence interval: 1.89821e+07-1.95737e+07
+Sample standard deviation: 1.04085e+06
+Tests used: 50
+
+---Summary statistics for Parallel and Unsequenced Execution Policy Benchmark---
+Sample mean cycles per test: 1.94704e+07
+Confidence interval: 1.74012e+07-2.15395e+07
+Sample standard deviation: 7.28077e+06
+Tests used: 50
+```
+
+While explicitly allowing vectorization led to no improvement,
+the parallel execution policies were ~7.5x faster which is quite nice.
 
 # Sorting to help with branch prediction
 
