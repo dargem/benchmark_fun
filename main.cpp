@@ -20,7 +20,9 @@ using benchmarks::Benchable;
 using benchmarks::BenchRunner;
 using benchmarks::BranchPredictionSorted;
 using benchmarks::BranchPredictionUnsorted;
+using benchmarks::ExecutionPolicies;
 using benchmarks::MersenneTwister;
+using benchmarks::Policy;
 using benchmarks::SOA;
 using benchmarks::VectorAccess;
 using benchmarks::Xoroshiro128plus;
@@ -164,13 +166,42 @@ void runAttributeBenchmark() {
     benchRunner.clearBenchables();
 }
 
+void runExecutionPolicyBenchmark() {
+    BenchRunner& benchRunner = BenchRunner::getInstance();
+    benchRunner.clearBenchables();
+
+    constexpr static size_t NUM_COORDINATES{50000};
+
+    {
+        // clang-format off
+        auto sequential = std::make_unique<ExecutionPolicies<Policy::SEQUENCED>>(NUM_COORDINATES);
+        auto unsequenced = std::make_unique<ExecutionPolicies<Policy::UNSEQUENCED>>(NUM_COORDINATES);
+        auto parallel = std::make_unique<ExecutionPolicies<Policy::PARALLEL>>(NUM_COORDINATES);
+        auto par_unseq = std::make_unique<ExecutionPolicies<Policy::PARALLEL_UNSEQUENCED>>(NUM_COORDINATES);
+        // clang-format on
+
+        benchRunner.addBenchable(std::move(sequential));
+        benchRunner.addBenchable(std::move(unsequenced));
+        benchRunner.addBenchable(std::move(parallel));
+        benchRunner.addBenchable(std::move(par_unseq));
+    }
+
+    constexpr static size_t ITERATIONS{30};
+    constexpr static size_t SAMPLES{500};
+
+    benchRunner.runBenchmarks(ITERATIONS, SAMPLES);
+    benchRunner.printResults();
+    benchRunner.clearBenchables();
+}
+
 int main() {
     try {
         // runRNGBenchmark();
         // runBranchPredictionBenchmark();
         // runVectorRandomAccessBenchmark();
         // testSOA_AOS_Iteration();
-        runAttributeBenchmark();
+        // runAttributeBenchmark();
+        runExecutionPolicyBenchmark();
     } catch (const std::runtime_error e) {
         std::cout << "Error: " << e.what() << std::endl;
     }

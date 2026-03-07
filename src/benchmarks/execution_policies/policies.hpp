@@ -1,5 +1,6 @@
 #pragma once
 
+#include <execution>
 #include <format>
 #include <random>
 #include <string>
@@ -10,18 +11,19 @@
 
 namespace benchmarks {
 
-enum class ExecutionPolicy {
+enum class Policy {
     SEQUENCED,            // Iterates in sequence
     UNSEQUENCED,          // Allows unsequenced iteration (can do vectorization/simd)
     PARALLEL,             // Allows parallel iteration (compiler can choose to do multithreading)
     PARALLEL_UNSEQUENCED  // Allows both parallel and unsequenced iteration (simd + multithreading)
 };
 
-template <ExecutionPolicy P>
-class ExecutionPolicyBenchmark : public Benchable {
+template <Policy P>
+class ExecutionPolicies : public Benchable {
    public:
-    ExecutionPolicyBenchmark(size_t coordinateSize) :
-            Benchable(BenchType::EXECUTION_POLICY, NAME),
+    ExecutionPolicies(size_t coordinateSize) :
+            Benchable(BenchType::EXECUTION_POLICY,
+                      std::format("{} Execution Policy Benchmark", TYPE)),
             x_pos(coordinateSize, float{}),
             y_pos(coordinateSize, float{}),
             z_pos(coordinateSize, float{}) {
@@ -30,7 +32,7 @@ class ExecutionPolicyBenchmark : public Benchable {
         asm volatile("" : : "r"(z_pos.data()) : "memory");
 
         std::random_device rd;
-        std::mt19937 generator(rd);
+        std::mt19937 generator(rd());
         std::uniform_real_distribution<float> distribution(-10, 10);
 
         std::get<0>(transformationVector) = distribution(generator);
@@ -49,33 +51,43 @@ class ExecutionPolicyBenchmark : public Benchable {
     }
 
     void runBenchmark(size_t iterations) override {
+        // split vector into its individual transformations
+        const float x_transform = std::get<0>(transformationVector);
+        const float y_transform = std::get<1>(transformationVector);
+        const float z_transform = std::get<2>(transformationVector);
+
         for (size_t i{}; i < iterations; ++i) {
-            if constexpr (P == ExecutionPolicy::SEQUENCED) {
+            if constexpr (P == Policy::SEQUENCED) {
+                std::for_each(std::execution::seq, x_pos.begin(), x_pos.end(),
+                              [x_transform](float x_coord) { return x_coord + x_transform; });
+                std::for_each(std::execution::seq, y_pos.begin(), y_pos.end(),
+                              [x_transform](float x_coord) { return x_coord + x_transform; });
+                std::for_each(std::execution::seq, z_pos.begin(), z_pos.end(),
+                              [x_transform](float x_coord) { return x_coord + x_transform; });
             }
-            if constexpr (P == ExecutionPolicy::UNSEQUENCED) {
+            if constexpr (P == Policy::UNSEQUENCED) {
             }
-            if constexpr (P == ExecutionPolicy::PARALLEL) {
+            if constexpr (P == Policy::PARALLEL) {
             }
-            if constexpr (P == ExecutionPolicy::PARALLEL_UNSEQUENCED) {
+            if constexpr (P == Policy::PARALLEL_UNSEQUENCED) {
             }
         }
     }
 
    private:
-    static constexpr std::string NAME =
-        std::format("{} Execution Policy bench", []() -> std::string {
-            switch (P) {
-            case ExecutionPolicy::SEQUENCED:
-                return "Sequenced";
-            case ExecutionPolicy::UNSEQUENCED:
-                return "Unsequenced";
-            case ExecutionPolicy::PARALLEL:
-                return "Parallel";
-            case ExecutionPolicy::PARALLEL_UNSEQUENCED:
-                return "Parallel and Unsequenced";
-            }
-            return "fallback, should never see this";
-        });
+    static constexpr std::string_view TYPE = []() {
+        switch (P) {
+        case Policy::SEQUENCED:
+            return "Sequenced";
+        case Policy::UNSEQUENCED:
+            return "Unsequenced";
+        case Policy::PARALLEL:
+            return "Parallel";
+        case Policy::PARALLEL_UNSEQUENCED:
+            return "Parallel and Unsequenced";
+        }
+        return "fallback, should never see this";
+    }();
     std::tuple<float, float, float> transformationVector;  // x, y, z vector
     // SOA coordinates
     std::vector<float> x_pos;
