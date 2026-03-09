@@ -27,8 +27,8 @@ ConfidenceInterval generateConfidenceInterval(std::vector<T> samples) {
     ConfidenceInterval confidenceInterval{};
     // confidence interval is x_bar ± t * (s / sqrt(n))
     // first try to find x_bar aka point estimate
-    T sum = std::accumulate(samples.begin(), samples.end(), 0.0,
-                            [](T sum, T sample) { return sum + sample; });
+    double sum = std::accumulate(samples.begin(), samples.end(), 0.0,
+                                 [](double sum, double sample) { return sum + sample; });
     double sampleMean = static_cast<double>(sum) / n;
     confidenceInterval.pointEstimate = sampleMean;
 
@@ -37,13 +37,13 @@ ConfidenceInterval generateConfidenceInterval(std::vector<T> samples) {
     const double tScore{boost::math::quantile(dist, 1.0 - (ALPHA / 2.0))};
     confidenceInterval.confidence = 1.0 - ALPHA;
 
-    // then find sample deviation, first finding sum of cubed deviations
-    T cubedDeviations =
-        std::accumulate(samples.begin(), samples.end(), 0.0, [sampleMean](T currentSum, T sample) {
+    // then find sample deviation, first finding sum of square deviations
+    double squareDeviations = std::accumulate(
+        samples.begin(), samples.end(), 0.0, [sampleMean](double currentSum, T sample) {
             return currentSum + std::pow(sample - sampleMean, 2);
         });
     // then divide it by n-1 samples and root it to get an unbiased estimator of standard deviation
-    double sampleStandardDeviation = std::sqrt(static_cast<double>(cubedDeviations) / (n - 1));
+    double sampleStandardDeviation = std::sqrt(squareDeviations / (n - 1));
 
     // the magnitude of the margin in a direction from the point estimate is t * (s / sqrt(n))
     const double margin{tScore * sampleStandardDeviation / std::sqrt(n)};

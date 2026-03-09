@@ -10,6 +10,7 @@
 #include "src/benchmarks/rng/mersenne_twister.hpp"
 #include "src/benchmarks/rng/xoroshiro128+.hpp"
 #include "src/benchmarks/vector_access/vectors.hpp"
+#include "src/stats/anovas.hpp"
 #include "src/stats/student_T_tests.hpp"
 #include "src/timer.hpp"
 
@@ -26,6 +27,7 @@ using benchmarks::Policy;
 using benchmarks::SOA;
 using benchmarks::VectorAccess;
 using benchmarks::Xoroshiro128plus;
+using stats::sameGroupMeans;
 
 void runRNGBenchmark() {
     BenchRunner& benchRunner = BenchRunner::getInstance();
