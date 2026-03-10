@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "boost/math/distributions/fisher_f.hpp"
+#include "boost/math/distributions/normal.hpp"
 #include "utils/concepts.hpp"
 
 // because we all love ANOVA don't we
@@ -73,6 +74,55 @@ bool sameGroupMeans(const std::vector<std::vector<T>>& treatments) {
     // If F is smaller or equal than the critical point the null hypothesis is accepted that they
     // all have equal means. So return true.
     return F <= criticalPoint;
+}
+
+// Tests for the normality of data. Used by anova to check the normality of residuals which is an
+// assumption of the model. Returns true if fail to reject the null that data is normally
+// distributed. Return false if the null is rejected (so the data is not normal).
+template <utils::Numeric T>
+bool shapiroWilkTest(const std::vector<T>& data) {
+    // The formula is W = (sum of all (x_i * a_i))^2 / (sum of all (x_i - x_bar)^2).
+    // where x_i is an observation in data, a_i is a constant derived from the expected order
+    // statistics of a standard normal sample and the covariance between them. Computing the
+    // covariance matrix is expensive though so this will use Blom's formula to estimate it.
+
+    std::vector<T> sortedData = data;
+    std::sort(sortedData.begin(), sortedData.end());
+    size_t n = data.size();
+
+    boost::math::normal_distribution norm(0, 1);
+    std::vector<double> m(n);
+    for (size_t i{}; i < n; ++i) {
+        double p = (i + 1 - 3.0 / 8.0) / (n + 1.0 / 4.0);
+        m[i] = boost::math::quantile(norm, p);
+    }
+
+    double sumSquare{};
+    for (double v : m) {
+        sumSquare += std::pow(v, 2);
+    }
+    double normFactor = std::sqrt(sumSquare);
+    // double a_i = m_i / normFactor;
+
+    double numerator{};
+    for (size_t i{}; i < ++i) {
+        double a_i = m[i] / normFactor;
+        numerator += a_1 * sortedData[i];
+    }
+    numerator = std::pow(numerator, 2);
+
+    double mean = std::accumulate(data.begin(), data.end(), 0.0,
+                                  [](double rollingTotal, double observation) {
+                                      return rollingTotal + observation;
+                                  }) /
+                  data.size();
+
+    double denominator{};
+    for (double observation : data) {
+        denominator += std::pow(observation - mean, 2);
+    }
+
+    double W = numerator / denominator;
 }
 
 }  // namespace stats

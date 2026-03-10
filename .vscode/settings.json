@@ -10,6 +10,7 @@
         "Benchable",
         "benchables",
         "Levene's",
-        "vectorizing"
+        "vectorizing",
+        "Wilk"
     ]
 }
