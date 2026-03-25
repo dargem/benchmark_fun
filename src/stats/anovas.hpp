@@ -81,6 +81,10 @@ bool sameGroupMeans(const std::vector<std::vector<T>>& treatments) {
 // distributed. Return false if the null is rejected (so the data is not normal).
 template <utils::Numeric T>
 bool shapiroWilkTest(const std::vector<T>& data) {
+    if (data.size() < 3) {
+        throw std::invalid_argument("Shapiro Wilk requires at least 3 samples");
+    }
+
     // The formula is W = (sum of all (x_i * a_i))^2 / (sum of all (x_i - x_bar)^2).
     // where x_i is an observation in data, a_i is a constant derived from the expected order
     // statistics of a standard normal sample and the covariance between them. Computing the
@@ -105,9 +109,9 @@ bool shapiroWilkTest(const std::vector<T>& data) {
     // double a_i = m_i / normFactor;
 
     double numerator{};
-    for (size_t i{}; i < ++i) {
+    for (size_t i{}; i < n; ++i) {
         double a_i = m[i] / normFactor;
-        numerator += a_1 * sortedData[i];
+        numerator += a_i * sortedData[i];
     }
     numerator = std::pow(numerator, 2);
 
@@ -123,6 +127,19 @@ bool shapiroWilkTest(const std::vector<T>& data) {
     }
 
     double W = numerator / denominator;
+
+    double y = std::log(1 - W);
+
+    double ln_n = std::log(n);
+
+    double mu = -1.5861 - 0.31082 * ln_n - 0.083751 * ln_n * ln_n + 0.0038915 * ln_n * ln_n * ln_n;
+
+    double sigma = std::exp(-0.4803 - 0.082676 * ln_n + 0.0030302 * ln_n * ln_n);
+
+    double z = (y - mu) / sigma;
+
+    // return p > 0.05;
+    return true; // holders
 }
 
 }  // namespace stats

@@ -176,12 +176,13 @@ void runExecutionPolicyBenchmark() {
 
     {
         // clang-format off
+        auto indexedLoop = std::make_unique<ExecutionPolicies<Policy::INDEXED_LOOP>>(NUM_COORDINATES);
         auto sequential = std::make_unique<ExecutionPolicies<Policy::SEQUENCED>>(NUM_COORDINATES);
         auto unsequenced = std::make_unique<ExecutionPolicies<Policy::UNSEQUENCED>>(NUM_COORDINATES);
         auto parallel = std::make_unique<ExecutionPolicies<Policy::PARALLEL>>(NUM_COORDINATES);
         auto par_unseq = std::make_unique<ExecutionPolicies<Policy::PARALLEL_UNSEQUENCED>>(NUM_COORDINATES);
         // clang-format on
-
+        benchRunner.addBenchable(std::move(indexedLoop));
         benchRunner.addBenchable(std::move(sequential));
         benchRunner.addBenchable(std::move(unsequenced));
         benchRunner.addBenchable(std::move(parallel));

@@ -128,30 +128,38 @@ The first version was just a translation on the position by adding a vector.
 All execution policies had the exact same performance, likely because the compiler was already vectorizing it for seq/unseq.
 While parallel iteration was allowed operations were memory bandwidth bound, so the OS didn't parallelize operations.
 This was modified then to do some more heavy (though unrealistic) operations on the data, needing to calc many sine functions.
+A default generic indexed loop was also included which doesn't use a for_each function for the loop.
+This is a zero cost abstraction so should be the same which is the case as seen below.
 
 ```
+---Summary statistics for Generic Indexed Loop Execution Policy Benchmark---
+Sample mean cycles per test: 1.51148e+08
+Confidence interval: 1.48761e+08-1.53535e+08
+Sample standard deviation: 8.39785e+06
+Tests used: 50
+
 ---Summary statistics for Sequenced Execution Policy Benchmark---
-Sample mean cycles per test: 1.51564e+08
-Confidence interval: 1.48964e+08-1.54163e+08
-Sample standard deviation: 9.14725e+06
+Sample mean cycles per test: 1.49426e+08
+Confidence interval: 1.47238e+08-1.51615e+08
+Sample standard deviation: 7.70051e+06
 Tests used: 50
 
 ---Summary statistics for Unsequenced Execution Policy Benchmark---
-Sample mean cycles per test: 1.49839e+08
-Confidence interval: 1.46747e+08-1.52931e+08
-Sample standard deviation: 1.08789e+07
+Sample mean cycles per test: 1.47965e+08
+Confidence interval: 1.45733e+08-1.50197e+08
+Sample standard deviation: 7.85318e+06
 Tests used: 50
 
 ---Summary statistics for Parallel Execution Policy Benchmark---
-Sample mean cycles per test: 1.92779e+07
-Confidence interval: 1.89821e+07-1.95737e+07
-Sample standard deviation: 1.04085e+06
+Sample mean cycles per test: 1.98117e+07
+Confidence interval: 1.91472e+07-2.04762e+07
+Sample standard deviation: 2.33812e+06
 Tests used: 50
 
 ---Summary statistics for Parallel and Unsequenced Execution Policy Benchmark---
-Sample mean cycles per test: 1.94704e+07
-Confidence interval: 1.74012e+07-2.15395e+07
-Sample standard deviation: 7.28077e+06
+Sample mean cycles per test: 1.91419e+07
+Confidence interval: 1.86417e+07-1.96421e+07
+Sample standard deviation: 1.75997e+06
 Tests used: 50
 ```
 

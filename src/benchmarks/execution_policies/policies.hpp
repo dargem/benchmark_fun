@@ -13,10 +13,12 @@
 namespace benchmarks {
 
 enum class Policy {
+    INDEXED_LOOP,         // Just use a generic indexed loop 
     SEQUENCED,            // Iterates in sequence
     UNSEQUENCED,          // Allows unsequenced iteration (can do vectorization/simd)
     PARALLEL,             // Allows parallel iteration (compiler can choose to do multithreading)
     PARALLEL_UNSEQUENCED  // Allows both parallel and unsequenced iteration (simd + multithreading)
+
 };
 
 template <Policy P>
@@ -73,7 +75,11 @@ class ExecutionPolicies : public Benchable {
         };
 
         for (size_t i{}; i < iterations; ++i) {
-            if constexpr (P == Policy::SEQUENCED) {
+            if constexpr (P == Policy::INDEXED_LOOP) {
+                for (size_t i{}; i < x_pos.size(); ++i) { heavyTransform(x_pos[i], x_transform); }
+                for (size_t i{}; i < y_pos.size(); ++i) { heavyTransform(y_pos[i], y_transform); }
+                for (size_t i{}; i < z_pos.size(); ++i) { heavyTransform(z_pos[i], z_transform); }
+            } else if constexpr (P == Policy::SEQUENCED) {
                 applyForEach(std::execution::seq, x_pos, x_transform);
                 applyForEach(std::execution::seq, y_pos, y_transform);
                 applyForEach(std::execution::seq, z_pos, z_transform);
@@ -96,6 +102,8 @@ class ExecutionPolicies : public Benchable {
    private:
     static constexpr std::string_view TYPE = []() {
         switch (P) {
+        case Policy::INDEXED_LOOP:
+            return "Generic Indexed Loop";
         case Policy::SEQUENCED:
             return "Sequenced";
         case Policy::UNSEQUENCED:
