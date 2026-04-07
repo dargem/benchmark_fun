@@ -1,5 +1,6 @@
 #include <iostream>
 #include <memory>
+#include <stdfloat>
 
 #include "src/benchmarks/SOA_AOS/structures.hpp"
 #include "src/benchmarks/attributes/likely_attributes.hpp"
@@ -142,6 +143,16 @@ void testSOA_AOS_Iteration() {
         benchRunner.printResults();
         benchRunner.clearBenchables();
     }
+
+    {
+        auto AOS_halfFloat = std::make_unique<AOS<std::float16_t>>(NUM_ENTITIES);
+        auto SOA_halfFloat = std::make_unique<SOA<std::float16_t>>(NUM_ENTITIES);
+        benchRunner.addBenchable(std::move(AOS_halfFloat));
+        benchRunner.addBenchable(std::move(SOA_halfFloat));
+        benchRunner.runBenchmarks(ITERATIONS, SAMPLES);
+        benchRunner.printResults();
+        benchRunner.clearBenchables();
+    }
 }
 
 void runAttributeBenchmark() {
@@ -202,9 +213,9 @@ int main() {
         // runRNGBenchmark();
         // runBranchPredictionBenchmark();
         // runVectorRandomAccessBenchmark();
-        // testSOA_AOS_Iteration();
+        testSOA_AOS_Iteration();
         // runAttributeBenchmark();
-        runExecutionPolicyBenchmark();
+        // runExecutionPolicyBenchmark();
     } catch (const std::runtime_error e) {
         std::cout << "Error: " << e.what() << std::endl;
     }

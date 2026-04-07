@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <format>
+#include <stdfloat>
 #include <string>
 #include <vector>
 
@@ -60,6 +61,8 @@ class AOS : public Benchable {
             return "long double";
         } else if constexpr (std::same_as<T, uint8_t>) {
             return "uint8_t";
+        } else if constexpr (std::same_as<T, std::float16_t>) {
+            return "16 bit float";
         } else {
             // this would fail prior to c++ 23 interestingly
             static_assert(false, "Fallthrough on getting type name in structures.hpp");
@@ -121,6 +124,8 @@ class SOA : public Benchable {
             return "long double";
         } else if constexpr (std::same_as<T, uint8_t>) {
             return "uint8_t";
+        } else if constexpr (std::same_as<T, std::float16_t>) {
+            return "16 bit float";
         } else {
             // this would fail prior to c++ 23 interestingly
             static_assert(false, "Fallthrough on getting type name in structures.hpp");
