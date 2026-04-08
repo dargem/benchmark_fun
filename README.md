@@ -27,68 +27,68 @@ a long double is only guaranteed to be as long as a double for example.
 
 ```
 ---Summary statistics for Array of Structures Iteration over uint8_t---
-Sample mean cycles per test: 44358.8
-Confidence interval: 44089.3-44628.3
-Sample standard deviation: 3067.37
-Tests used: 500
+Sample mean cycles per test: 95931.1
+Confidence interval: 94846.3-97015.8
+Sample standard deviation: 17480.4
+Tests used: 1000
 
 ---Summary statistics for Structure of Arrays iteration over uint8_t---
-Sample mean cycles per test: 4470.62
-Confidence interval: 4354.22-4587.03
-Sample standard deviation: 1324.79
-Tests used: 500
+Sample mean cycles per test: 11486.2
+Confidence interval: 11274.7-11697.7
+Sample standard deviation: 3408.38
+Tests used: 1000
 ```
 
-Unbelievable 10x speed increases due to SIMD, SOA is way faster here when operating on the 1 byte unsigned integers.
+Unbelievable ~9x speed increases due to SIMD, SOA is way faster here when operating on the 1 byte unsigned integers.
 A more realistic example using floats seeing as these are coordinates.
 
 ```
 ---Summary statistics for Array of Structures Iteration over float---
-Sample mean cycles per test: 91756.3
-Confidence interval: 87572-95940.6
-Sample standard deviation: 47621.7
-Tests used: 500
+Sample mean cycles per test: 171870
+Confidence interval: 170979-172762
+Sample standard deviation: 14368.1
+Tests used: 1000
 
 ---Summary statistics for Structure of Arrays iteration over float---
-Sample mean cycles per test: 31608.8
-Confidence interval: 29563.1-33654.5
-Sample standard deviation: 23282
-Tests used: 500
+Sample mean cycles per test: 55092.7
+Confidence interval: 54501.8-55683.7
+Sample standard deviation: 9523.02
+Tests used: 1000
 ```
 
 Still ~3x speed increase which is incredible on the 4 byte floats.
 
 ```
 ---Summary statistics for Array of Structures Iteration over double---
-Sample mean cycles per test: 91581.5
-Confidence interval: 89847.1-93315.9
-Sample standard deviation: 19739.5
-Tests used: 500
+Sample mean cycles per test: 197846
+Confidence interval: 195237-200456
+Sample standard deviation: 42051.9
+Tests used: 1000
 
 ---Summary statistics for Structure of Arrays iteration over double---
-Sample mean cycles per test: 54189.8
-Confidence interval: 53253.1-55126.5
-Sample standard deviation: 10660.7
-Tests used: 500
+Sample mean cycles per test: 114971
+Confidence interval: 113704-116238
+Sample standard deviation: 20420.2
+Tests used: 1000
 ```
 
-Bit under 2x speed increases which is still great for the 8 byte doubles.
+Bit slightly under 2x speed increases which is still great for the 8 byte doubles.
 Pattern here is fairly obvious, smaller data types take greater advantage of SIMD.
 SIMD performs operations on multiple pieces of data in the CPU's register at once,
 smaller data types lets the cpu pack more elements in the same register and operate on more data at the same time.
 
 ```
 ---Summary statistics for Array of Structures Iteration over long double---
-Sample mean cycles per test: 4.58413e+06
-Confidence interval: 4.48494e+06-4.68332e+06
-Sample standard deviation: 1.12893e+06
-Tests used: 500
+Sample mean cycles per test: 2.34066e+06
+Confidence interval: 2.29059e+06-2.39072e+06
+Sample standard deviation: 806779
+Tests used: 1000
 
 ---Summary statistics for Structure of Arrays iteration over long double---
-Sample mean cycles per test: 4.3403e+06
-Confidence interval: 4.27143e+06-4.40917e+06
-Sample standard deviation: 783833
-Tests used: 500
+Sample mean cycles per test: 2.19956e+06
+Confidence interval: 2.17646e+06-2.22267e+06
+Sample standard deviation: 372367
+Tests used: 1000
 ```
 
 Performance gains almost completely disappear with the 16 byte long double.
@@ -99,9 +99,25 @@ though through a trick double pumping them through 256 bit registers.
 Regardless even using AVX2 instructions for 256 bit registers you would expect to fit 2 long doubles (128 each),
 but there's clearly not a sizeable enough performance increase.
 On x86-64 linux, long double is 80 bit extended precision stored in 16 bytes, 10 data and 6 padding
-(seems like a lot of wasted space but guess it needs to be 8 byte aligned).
+(a lot of wasted space but it needs to be 16 byte aligned).
 AVX2 and AVX512 have no support for 80 bit floats, just vectorizing 32 bit and 64 bit floats.
 So the compiler uses scalar instructions and the very minimal performance increases are just due to the better cache locality which is interesting.
+
+```
+---Summary statistics for Array of Structures Iteration over 16 bit float---
+Sample mean cycles per test: 499966
+Confidence interval: 498174-501758
+Sample standard deviation: 28875.4
+Tests used: 1000
+
+---Summary statistics for Structure of Arrays iteration over 16 bit float---
+Sample mean cycles per test: 541937
+Confidence interval: 539957-543917
+Sample standard deviation: 31900.5
+Tests used: 1000
+```
+
+Then testing with 
 
 <br>
 

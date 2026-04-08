@@ -100,9 +100,9 @@ void testSOA_AOS_Iteration() {
     BenchRunner& benchRunner = BenchRunner::getInstance();
     benchRunner.clearBenchables();
 
-    constexpr size_t NUM_ENTITIES{50000};
+    constexpr size_t NUM_ENTITIES{100000};
     constexpr size_t ITERATIONS{1};
-    constexpr size_t SAMPLES{500};
+    constexpr size_t SAMPLES{1000};
 
     {
         auto AOS_struct8bit = std::make_unique<AOS<uint8_t>>(NUM_ENTITIES);
