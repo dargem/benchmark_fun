@@ -14,15 +14,43 @@ For machines with an OS, a process runs inside a virtual address space which is 
 This is a necessity to have multiple processes running simultaneously, as each can reside inside their own virtual address space which the OS maps to physical memory addresses.
 On a 64 bit linux system a process is typically allocated a 128 TiB large virtual address space, which mildly eclipses my laptops 16gb of RAM.
 The key to why this works is the OS lazily maps virtual memory addresses to physical addresses, so it doesn't bother mapping it until the program actually accesses that memory.
-
+<br>
 Moving back to the vectors, when adding enough elements the vector runs out of capacity so it needs to trigger a resizing operation.
 This means allocating more memory, then moving all its elements into its new larger space on the heap which is a costly operation.
 This also breaks reference stability and iterator stability when adding elements, as pushing back could need a resizing operation.
-By allocating it 15 gigabytes of memory though, it would realistically never need to resize making pushing back not just amortized O(1).
-Additionally references and iterators would be stable when pushing elements to the back which is another interesting benefit.
-And while there is a pointer to the memory, it has not been accessed yet, so while this uses 15 gigabytes of virtual memory, it uses no physical memory.
+A common performance trick to store n objects in say an empty vector,
+is to reserve n capacity ahead of time so it resizes once at the start rather than multiple times as elements get pushed to the vectors back.
+This is good for performance, but in cases where capacity is not perfectly known ahead of time, pushing one more object onto it will cause a nasty resize.
+So how can wew avoid resizes without knowing the amount of storage needed ahead of time and without wasting lots of memory?
+<br>
+The answer is simply allocating 15 gigabytes of memory or a similarly excessive amount of memory to the vector.
+Pushing back would be truly constant O(1), additionally references and iterators would stay stable when pushing to the back.
+While there is a pointer to the memory, it hasn't been accessed yet, so while this uses 15 gigabytes of virtual memory, it uses no physical memory!
+<br>
+Below is a test between two vectors, one with a 15 GB reservation and one with no capacity reserved.
+Both vectors get 5 million 8 byte objects (40MB total) pushed onto them.
 
+```
+---Summary statistics for No Reservation Vector---
+Sample mean cycles per test: 8.34598e+07
+Confidence interval: 8.11013e+07-8.58182e+07
+Sample standard deviation: 8.29868e+06
+Tests used: 50
 
+---Summary statistics for 15 GB reservation vector---
+Sample mean cycles per test: 3.37579e+07
+Confidence interval: 3.29776e+07-3.45383e+07
+Sample standard deviation: 2.74565e+06
+Tests used: 50
+```
+
+This is ~2.5x faster which is an incredible speedup from avoiding resizing. While in this case the size was known ahead of time as its a test,
+the key point is pushing any (realistic) number of elements doesn't triggers a resize and this hasn't wasted any more memory than required.
+Proof of this is checking top (shows %cpu and memory usage) for either reservation type has both maxing at the same 0.3% memory usage respectively.
+40 MB / 16000 MB (16GB) = 0.25% expected usage for just the push back loop, considering other memory used by the application, and 1 d.p. accuracy top rounding to 0.3% makes sense.
+An important note is for both loops the vectors lifetime ends so the OS is free (depending on the memory controller) to,
+but doesn't necessarily need to and in some cases can't unmap the memory.
+In this case memory usage was visibly oscillating between 0.0 to 0.3 so in both cases it wasn't like the program was reusing the same physical memory mappings across loops.
 
 # Structure of Arrays (SOA) vs Array of Structures (AOS) (SIMD test)
 

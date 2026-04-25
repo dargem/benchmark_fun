@@ -221,12 +221,12 @@ void runReservedVectorBenchmark() {
             std::make_unique<VectorWrapper<ReservationSize::FIFTEEN_GIGABYTE>>();
 
         benchRunner.addBenchable(std::move(noReserveVector));
-        benchRunner.addBenchable(std::move(bigReserveVector));
+        // benchRunner.addBenchable(std::move(bigReserveVector));
     }
 
-    // given each element inside is 4 bytes
+    // given each element inside is 8 bytes, 3.2 GB
     constexpr static size_t ELEMENTS{5000000};
-    constexpr static size_t SAMPLES{50};
+    constexpr static size_t SAMPLES{300000};
 
     benchRunner.runBenchmarks(ELEMENTS, SAMPLES);
     benchRunner.printResults();
