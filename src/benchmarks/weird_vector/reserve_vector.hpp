@@ -7,7 +7,7 @@ namespace benchmarks {
 
 enum class ReservationSize : u_int64_t {
     ZERO_BYTES = 0,
-    FIVE_HUNDRED_GIGABYTE = 16106127360 /*536870912000*/
+    FIFTEEN_GIGABYTE = 16106127360 /*536870912000*/
 };
 
 template <ReservationSize T>  // differentiate static members through reservation size
@@ -53,7 +53,7 @@ struct VectorWrapper : Benchable {
         if constexpr (S == ReservationSize::ZERO_BYTES) {
             return "No Reservation Vector";
         } else {
-            return "500 GB reservation vector";
+            return "15 GB reservation vector";
         }
     }();
 };

@@ -8,6 +8,22 @@ probably doesn't work on 32 bit systems due to hacky stuff!
 Seems like standard deviation can be out of wack occasionally.
 Not sure why but probably due to rare events like os jitter that can skew one sample to take far longer.
 
+# Reserving a vector 15 gigabytes of capacity
+
+For machines with an OS, a process runs inside a virtual address space which is abstracted away by the OS from physical memory addresses.
+This is a necessity to have multiple processes running simultaneously, as each can reside inside their own virtual address space which the OS maps to physical memory addresses.
+On a 64 bit linux system a process is typically allocated a 128 TiB large virtual address space, which mildly eclipses my laptops 16gb of RAM.
+The key to why this works is the OS lazily maps virtual memory addresses to physical addresses, so it doesn't bother mapping it until the program actually accesses that memory.
+
+Moving back to the vectors, when adding enough elements the vector runs out of capacity so it needs to trigger a resizing operation.
+This means allocating more memory, then moving all its elements into its new larger space on the heap which is a costly operation.
+This also breaks reference stability and iterator stability when adding elements, as pushing back could need a resizing operation.
+By allocating it 15 gigabytes of memory though, it would realistically never need to resize making pushing back not just amortized O(1).
+Additionally references and iterators would be stable when pushing elements to the back which is another interesting benefit.
+And while there is a pointer to the memory, it has not been accessed yet, so while this uses 15 gigabytes of virtual memory, it uses no physical memory.
+
+
+
 # Structure of Arrays (SOA) vs Array of Structures (AOS) (SIMD test)
 
 Benchmark is iterating over an effective list of entities.
@@ -117,7 +133,7 @@ Sample standard deviation: 31900.5
 Tests used: 1000
 ```
 
-Then testing with 
+Then testing with
 
 <br>
 
