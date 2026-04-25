@@ -11,6 +11,7 @@
 #include "src/benchmarks/rng/mersenne_twister.hpp"
 #include "src/benchmarks/rng/xoroshiro128+.hpp"
 #include "src/benchmarks/vector_access/vectors.hpp"
+#include "src/benchmarks/weird_vector/reserve_vector.hpp"
 #include "src/stats/anovas.hpp"
 #include "src/stats/student_T_tests.hpp"
 #include "src/timer.hpp"
@@ -25,8 +26,10 @@ using benchmarks::BranchPredictionUnsorted;
 using benchmarks::ExecutionPolicies;
 using benchmarks::MersenneTwister;
 using benchmarks::Policy;
+using benchmarks::ReservationSize;
 using benchmarks::SOA;
 using benchmarks::VectorAccess;
+using benchmarks::VectorWrapper;
 using benchmarks::Xoroshiro128plus;
 using stats::sameGroupMeans;
 
@@ -208,14 +211,37 @@ void runExecutionPolicyBenchmark() {
     benchRunner.clearBenchables();
 }
 
+void runReservedVectorBenchmark() {
+    BenchRunner& benchRunner = BenchRunner::getInstance();
+    benchRunner.clearBenchables();
+
+    {
+        auto noReserveVector = std::make_unique<VectorWrapper<ReservationSize::ZERO_BYTES>>();
+        auto bigReserveVector =
+            std::make_unique<VectorWrapper<ReservationSize::FIVE_HUNDRED_GIGABYTE>>();
+
+        benchRunner.addBenchable(std::move(noReserveVector));
+        benchRunner.addBenchable(std::move(bigReserveVector));
+    }
+
+    // given each element inside is 4 bytes
+    constexpr static size_t ELEMENTS{1000000};
+    constexpr static size_t SAMPLES{5000000};
+
+    benchRunner.runBenchmarks(ELEMENTS, SAMPLES);
+    benchRunner.printResults();
+    benchRunner.clearBenchables();
+}
+
 int main() {
     try {
         // runRNGBenchmark();
         // runBranchPredictionBenchmark();
         // runVectorRandomAccessBenchmark();
-        testSOA_AOS_Iteration();
+        // testSOA_AOS_Iteration();
         // runAttributeBenchmark();
         // runExecutionPolicyBenchmark();
+        runReservedVectorBenchmark();
     } catch (const std::runtime_error e) {
         std::cout << "Error: " << e.what() << std::endl;
     }

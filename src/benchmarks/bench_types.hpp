@@ -10,7 +10,8 @@ enum class BenchType {
     STRUCTURE_ITERATION,
     VECTOR_BOOL_CHAR_RANDOM_ACCESS,
     STRUCTURE_LAYOUT,
-    EXECUTION_POLICY
+    EXECUTION_POLICY,
+    VECTOR_RESERVATION
 };
 
 }  // namespace benchmarks
