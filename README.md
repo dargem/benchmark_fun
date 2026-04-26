@@ -15,18 +15,21 @@ This is a necessity to have multiple processes running simultaneously, as each c
 On a 64 bit linux system a process is typically allocated a 128 TiB large virtual address space, which mildly eclipses my laptops 16gb of RAM.
 The key to why this works is the OS lazily maps virtual memory addresses to physical addresses, so it doesn't bother mapping it until the program actually accesses that memory.
 <br>
-Moving back to the vectors, when adding enough elements the vector runs out of capacity so it needs to trigger a resizing operation.
-This means allocating more memory, then moving all its elements into its new larger space on the heap which is a costly operation.
-This also breaks reference stability and iterator stability when adding elements, as pushing back could need a resizing operation.
-A common performance trick to store n objects in say an empty vector,
-is to reserve n capacity ahead of time so it resizes once at the start rather than multiple times as elements get pushed to the vectors back.
-This is good for performance, but in cases where capacity is not perfectly known ahead of time, pushing one more object onto it will cause a nasty resize.
-So how can wew avoid resizes without knowing the amount of storage needed ahead of time and without wasting lots of memory?
+
+Moving back to the vectors, adding enough elements to a vector can have its size exceed its capacity, this requires the vector to resize.
+This means allocating more memory, then moving all its elements into its new larger space on the heap which is a costly O(n) operation.
+This also breaks reference stability and iterator stability when adding elements, as pushing back could trigger a resize, which moves the address of elements.
+To get around this partially there is a common performance trick to add n objects into say an empty vector.
+This is done by reserving n capacity ahead of time so it resizes once at the start rather than potentially multiple times as elements get pushed to the back of the vector.
+While nice, in many cases the number of elements isn't known ahead of time so guessing k elements may help but if size reaches k+1 a resize will take k costly copies of the object.
+So how can we avoid resizes, without knowing the amount of storage needed ahead of time and without wasting lots of memory?
 <br>
-The answer is simply allocating 15 gigabytes of memory or a similarly excessive amount of memory to the vector.
+
+The answer is a <s>linked list</s> allocating 15 gigabytes of memory or a similarly excessive amount of memory to the vector.
 Pushing back would be truly constant O(1), additionally references and iterators would stay stable when pushing to the back.
 While there is a pointer to the memory, it hasn't been accessed yet, so while this uses 15 gigabytes of virtual memory, it uses no physical memory!
 <br>
+
 Below is a test between two vectors, one with a 15 GB reservation and one with no capacity reserved.
 Both vectors get 5 million 8 byte objects (40MB total) pushed onto them.
 
@@ -48,9 +51,6 @@ This is ~2.5x faster which is an incredible speedup from avoiding resizing. Whil
 the key point is pushing any (realistic) number of elements doesn't triggers a resize and this hasn't wasted any more memory than required.
 Proof of this is checking top (shows %cpu and memory usage) for either reservation type has both maxing at the same 0.3% memory usage respectively.
 40 MB / 16000 MB (16GB) = 0.25% expected usage for just the push back loop, considering other memory used by the application, and 1 d.p. accuracy top rounding to 0.3% makes sense.
-An important note is for both loops the vectors lifetime ends so the OS is free (depending on the memory controller) to,
-but doesn't necessarily need to and in some cases can't unmap the memory.
-In this case memory usage was visibly oscillating between 0.0 to 0.3 so in both cases it wasn't like the program was reusing the same physical memory mappings across loops.
 
 # Structure of Arrays (SOA) vs Array of Structures (AOS) (SIMD test)
 
@@ -356,10 +356,14 @@ if constexpr (A == Attribute::UNLIKELY) {
 ```
 
 This benchmarks 3 scenarios like above, the randomly generated number has a ~95% chance to be > size_needed_for_success.
-For the number to be equal this was exceedingly rare (1/100000) so lazily evaluation this after the first if should improve performance.
+For the number to be equal this was exceedingly rare (1/100000) so it realistically will never happen.
+Evaluating the > condition first would allow short circuiting 95% of the time which skips needing a second evaluation,
+while evaluating the == condition first would basically never short circuit so it would ~always need 2 evaluations.
+<br>
+
 This uses the [[unlikely]] attribute and [[likely]] attribute to lie to the compiler.
 If it trusts me this would theoretically tank performance as it would evaluate the unlikely condition first thinking that path of execution was "more likely".
-This is obviously just a hint to the compiler, definitely compiler specific and the compiler could just completely ignore it.
+This is obviously just a hint to the compiler, definitely compiler specific and the compiler could just completely ignore it (this was done using GCC).
 This tests with attributes correct (LIKELY), with attributes wrong (UNLIKELY) and without attributes (DEFAULT Behavior).
 
 ```
