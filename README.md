@@ -52,6 +52,18 @@ the key point is pushing any (realistic) number of elements doesn't triggers a r
 Proof of this is checking top (shows %cpu and memory usage) for either reservation type has both maxing at the same 0.3% memory usage respectively.
 40 MB / 16000 MB (16GB) = 0.25% expected usage for just the push back loop, considering other memory used by the application, and 1 d.p. accuracy top rounding to 0.3% makes sense.
 
+```
+// compiled using just 15gb reserve vector
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+  39455 tristan   20   0   15.0g  16884   4144 R 100.0   0.1   0:04.21 benchmarks
+
+// compiled using just no reserve vector
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+  42979 tristan   20   0   18468  13404   4036 R  94.9   0.1   1:09.86 benchmarks
+```
+
+This is an interesting output from top. VIRT is the amount of virtual memory the process is using, while RES (resident set size) is the amount of physical RAM the process is actually using at that point in time. As expected the no reserve vector is using up 15gb of virtual memory but as seen the resident set size is small. Increasing memory usage to a few gigabytes so the process is slow, with the no reserve vector you can see that virtual memory usage is no greater than 2x larger than the current RES. This makes perfect sense since compiling it with gcc, vectors have a 2x resize ratio.
+
 # Structure of Arrays (SOA) vs Array of Structures (AOS) (SIMD test)
 
 Benchmark is iterating over an effective list of entities.
