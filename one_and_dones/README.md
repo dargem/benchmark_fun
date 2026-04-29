@@ -1,0 +1,1 @@
+For the less associated benchmarks, one and done things such as size of structs considering padding and etc.
