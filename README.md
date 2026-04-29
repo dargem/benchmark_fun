@@ -237,6 +237,72 @@ Tests used: 50
 While explicitly allowing vectorization led to no improvement,
 the parallel execution policies were ~7.5x faster which is quite nice.
 
+# SSO
+
+One of the key differences between std::string and a c style string made through a char array is a std::string is resizable.
+It does this through managing a heap allocated resource, working similar to a vector with it resizing to fit the characters that need storage.
+std::string though is often considered badly performant due to this though as it can lead to a lot of costly heap allocations, which is the case but there is a trick for small strings.
+A naively implemented string implementation would look something like a vector, with a pointer to its heap allocated resource and two size_t's, capacity of the resource and current size.
+This is logical but something like std::string = ""; would result in an expensive heap allocation to store just a null terminator.
+The trick involves type punning, what if rather than heap allocating memory, you rather use the 16 bytes from the pointer + capacity to store it.
+Before an explanation this is an example of how it looks blind when benchmarking.
+
+```
+---Summary statistics for String of size 15---
+Sample mean cycles per test: 114259
+Confidence interval: 113646-114871
+Sample standard deviation: 5393.25
+Tests used: 300
+
+---Summary statistics for String of size 16---
+Sample mean cycles per test: 113952
+Confidence interval: 113456-114449
+Sample standard deviation: 4367.85
+Tests used: 300
+
+---Summary statistics for String of size 17---
+Sample mean cycles per test: 332768
+Confidence interval: 332051-333485
+Sample standard deviation: 6307.89
+Tests used: 300
+
+---Summary statistics for String of size 18---
+Sample mean cycles per test: 328449
+Confidence interval: 327661-329237
+Sample standard deviation: 6932.64
+Tests used: 300
+```
+
+This can be seen incredibly cleanly, an increase of size to 17 from 16 results in a 3x drop in performance! This is a clear drop off between stack and heap allocation "modes".
+
+Note that by a string of size 15, I mean it holds 15 bytes which includes the null terminator in those 15.
+
+Essentially something like this for a good
+
+```
+
+class String {
+
+    class Union {
+        struct {
+            char* data;
+            size_t capacity;
+        } heap;
+
+        struct {
+            char stackbuf[sizeof(heap) - 1];
+            uint8_t stacksize;
+        } stack;
+    };
+
+    size_t size;
+
+};
+
+```
+
+Small String Optimization (SSO) is a technique to get around these heap allocations, at least for small strings.
+
 # Sorting to help with branch prediction
 
 Benchmark is an iteration through a list of random numbers in range a to b.
@@ -250,6 +316,7 @@ as for the ~ first half of the list it'll be smaller than the mean (approximatel
 This makes branch prediction very easy, so sorting a list should result in better performance.
 
 ```
+
 ---Summary statistics for Branch Prediction Sorted Version---
 Sample mean cycles per test: 1.21501e+06
 Confidence interval: 1.19809e+06-1.23193e+06
@@ -261,6 +328,7 @@ Sample mean cycles per test: 2.17935e+06
 Confidence interval: 2.15972e+06-2.19897e+06
 Sample standard deviation: 172743
 Tests used: 300
+
 ```
 
 As seen decent ~80% performance increase by a seemingly strange optimization for the hardware.
@@ -279,6 +347,7 @@ Benchmarks show this is usually the case, this is a bench of accessing 1000 rand
 ~ equal for char and uint_8, ~ 50% longer for bool vectors.
 
 ```
+
 ---Summary statistics for bool vector random access---
 Sample mean cycles per test: 1447.27
 Confidence interval: 1441.81-1452.72
@@ -296,6 +365,7 @@ Sample mean cycles per test: 976.6
 Confidence interval: 974.153-979.047
 Sample standard deviation: 39.4373
 Tests used: 1000
+
 ```
 
 But interestingly bool vectors can have improved performance in certain memory access patterns.
@@ -313,6 +383,7 @@ I assume the cache is managed smartly and since the size_t vector can be predict
 it doesn't end up wasting a lot of space in the cache.
 
 ```
+
 ---Summary statistics for bool vector random access---
 Sample mean cycles per test: 807507 (8.075e+05)
 Confidence interval: 787985-827030
@@ -330,6 +401,7 @@ Sample mean cycles per test: 1.00104e+06
 Confidence interval: 973945-1.02813e+06
 Sample standard deviation: 436552
 Tests used: 1000
+
 ```
 
 # XOROSHIRO 128+ vs Inbuilt Mersenne Twister
@@ -339,6 +411,7 @@ Was expecting xoroshiro128+ to be substantially faster and it is, 3x faster numb
 Xoroshiro also has better statistical properties.
 
 ```
+
 ---Summary statistics for Xoroshiro128+ RNG---
 Sample mean cycles per test: 3.09121e+06
 Confidence interval: 3.08428e+06-3.09813e+06
@@ -350,6 +423,7 @@ Sample mean cycles per test: 8.83133e+06
 Confidence interval: 8.75627e+06-8.90639e+06
 Sample standard deviation: 660624
 Tests used: 300
+
 ```
 
 # LIKELY / UNLIKELY Attributes
@@ -357,13 +431,15 @@ Tests used: 300
 C++ 20 introduces the [[likely]] and [[unlikely]] attributes which are "hints" to inform the compiler if a path of execution is more or less likely than another.
 
 ```
+
 if constexpr (A == Attribute::UNLIKELY) {
-    if (number > SIZE_NEEDED_FOR_SUCCESS) [[unlikely]] {  // lie 95% is unlikely
-        successes += 1;
-    } else if (number == SIZE_NEEDED_FOR_SUCCESS) [[likely]] {  // lie ~0% is likely
-        equalities += 1;
-    }
+if (number > SIZE_NEEDED_FOR_SUCCESS) [[unlikely]] { // lie 95% is unlikely
+successes += 1;
+} else if (number == SIZE_NEEDED_FOR_SUCCESS) [[likely]] { // lie ~0% is likely
+equalities += 1;
 }
+}
+
 ```
 
 This benchmarks 3 scenarios like above, the randomly generated number has a ~95% chance to be > size_needed_for_success.
@@ -378,6 +454,7 @@ This is obviously just a hint to the compiler, definitely compiler specific and 
 This tests with attributes correct (LIKELY), with attributes wrong (UNLIKELY) and without attributes (DEFAULT Behavior).
 
 ```
+
 ---Summary statistics for Branch Prediction with attribute LIKELY---
 Sample mean cycles per test: 208202
 Confidence interval: 207068-209336
@@ -395,6 +472,7 @@ Sample mean cycles per test: 210914
 Confidence interval: 209475-212352
 Sample standard deviation: 51878.2
 Tests used: 5000
+
 ```
 
 There is a statistically significant result that default behavior performs slightly worse surprisingly, though difference is very mild.
@@ -409,30 +487,34 @@ On a hardware level, data is physically divided into cache lines which are typic
 A way to get around this is through aligning data. For example a cache line is typically 64 bytes, though some chips implement different size cache lines but they are all of 2^n in size. If you wanted to find if a memory address was "safe" to place 4 bytes of data without it crossing cache lines, you could check if that address was divisible by 4. [0:63] wouldn't allow data to start at 61-63 as some bytes would cross a cache line. 60 which is divisible by 4 would be safe as it would take up [60, 61, 62, 63]. On 64 bit linux systems a long double is typically on 10 bytes of size. A 4 byte alignment obviously wouldn't work since starting at address 60 would lead to it overflowing, and a 10 byte alignment would also mark 60 as fine for it to start which it isn't. Rather you need the smallest factor of 64 which is as large as your piece of data for proper alignment. A good property of c = 2^n, is its factors are 2^x for 0 <= int x <= n. So a 10 byte long double would be wasting 6 bytes of space as it needs to be properly 16 byte aligned.
 
 ```
+
 struct IntDoubleInt {
-    int int_val_1;      // needs to be 4 byte aligned [0:3]
-    double double_val;  // needs to be 8 byte aligned [8:15]
-    int int_val_2;      // needs to be 4 byte aligned [16:19]
-};  // struct has 8 byte alignment, but it ends at 19 (20 bytes used), this isn't a multiple of 20
-    // so we need to add some padding at the end. So it would take [0:23] or 24 bytes total
+int int_val_1; // needs to be 4 byte aligned [0:3]
+double double_val; // needs to be 8 byte aligned [8:15]
+int int_val_2; // needs to be 4 byte aligned [16:19]
+}; // struct has 8 byte alignment, but it ends at 19 (20 bytes used), this isn't a multiple of 20
+// so we need to add some padding at the end. So it would take [0:23] or 24 bytes total
 
 struct IntIntDouble {
-    int int_val_1;      // needs to be 4 byte aligned [0:3]
-    int int_val_2;      // needs to be 4 byte aligned [4:7]
-    double double_val;  // needs to be 8 byte aligned [8:15]
-};  // struct has the alignment of its largest elements alignment which is 8 bytes here. So [0:15]
-    // works out with no end padding as thats a multiple of 8.
+int int_val_1; // needs to be 4 byte aligned [0:3]
+int int_val_2; // needs to be 4 byte aligned [4:7]
+double double_val; // needs to be 8 byte aligned [8:15]
+}; // struct has the alignment of its largest elements alignment which is 8 bytes here. So [0:15]
+// works out with no end padding as thats a multiple of 8.
+
 ```
 
 This is an example in practice, when creating a struct / class the standard guarantees that the order you define members in is the same order they are laid out in memory. For the IntDoubleInt the struct itself is 8 byte aligned because the struct has the alignment of the largest alignment of its members. This means the struct is starting at an address which is a multiple of 8. We then add an int, a multiple of 8 is a multiple of 4 so no padding needs to be considered here. But now the next address is a 4 offset from a multiple of 8, so to add a double we insert padding which is just empty space. We can then insert the 4 byte int. This has used up 4 bytes from the first int, 4 from padding, then another 8 from the float, 4 from the int which adds up to 20 bytes. But the data needs to take up the whole alignments worth of space so it adds 4 bytes of padding at the end to keep the struct aligned. This results in it taking 24 bytes total. In the IntIntDouble case there is no alignment issues though so its only taking up 16 bytes, this is 1/3 less space used from good ordering of members. Because the standard guarantees order you define members in is the same order they are laid out in memory the compiler is not free to reorder them, its completely up to the programmer.
 
 ```
+
 static_assert(sizeof(IntIntDouble) == 16);
 static_assert(sizeof(IntIntDouble) == (sizeof(int) + sizeof(int) + sizeof(double)));
 
 static_assert(sizeof(IntDoubleInt) != 16);
 static_assert(sizeof(IntDoubleInt) != (sizeof(int) + sizeof(int) + sizeof(double)));
 static_assert(sizeof(IntDoubleInt) == 24);
+
 ```
 
 Because of that these static asserts pass.
@@ -445,3 +527,7 @@ Because of that these static asserts pass.
 - simd/vectorisation falls into SOA kinda
 - false sharing messing with concurrency
 - maybe LTO
+
+```
+
+```
