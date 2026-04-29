@@ -173,12 +173,11 @@ Sample standard deviation: 31900.5
 Tests used: 1000
 ```
 
-Then testing with
-
 <br>
 
-Obviously trying to vectorize code makes it far less readable and hard to maintain + understand,
-but up to a 10x performance increase is a must have for some performance critical systems like computer graphics.
+Obviously trying to organize data in a way operations can be vectorized can be very counterintuitive,
+but up to a 10x performance increase is a must have for some performance critical systems.
+Game engines make heavy use of this through ECS (entity component systems).
 
 # Execution Policies
 
@@ -402,6 +401,42 @@ There is a statistically significant result that default behavior performs sligh
 Using attributes incorrectly though tanks performance, more than 2x slower with the reversed attributes.
 In a handwavy sense Makes sense its ~2x slower seeing its doubled the number of evaluations needed.
 
+# Reorganizing a struct for less memory usage
+
+On a hardware level, data is physically divided into cache lines which are typically 64 byes long. When the CPU fetches memory from RAM it fetches that memory by the whole cache line, the cache line is the smallest unit of data transferrable between RAM and CPU cache. This is good because there is a spacial locality to data access, meaning getting some nearby data with what you want can help minimize future cache misses. Too large of a cache line though and you pick up more irrelevant data which could displace actually useful stuff from the cpu's cache so there's a balance. If you had an 8 byte piece of data, but it started at the end of one cache line and ended in the other when accessing it you would need both cache lines. This is called an unaligned access, in the worst case old CPU's don't support unaligned memory access and can crash, modernly this just has a speed penalty as the processor needs to read/write from two different cache lines and increases memory access latency. An additional thing is the whole cache line is mapped to a single page, not spanning across two. There is no guarantee that data will exist on one page if this piece of data is split across cache line boundaries though this would be fairly unlucky it could be pretty costly. On modern CPU's the effect of unaligned access is significantly less impactful.
+<br>
+
+A way to get around this is through aligning data. For example a cache line is typically 64 bytes, though some chips implement different size cache lines but they are all of 2^n in size. If you wanted to find if a memory address was "safe" to place 4 bytes of data without it crossing cache lines, you could check if that address was divisible by 4. [0:63] wouldn't allow data to start at 61-63 as some bytes would cross a cache line. 60 which is divisible by 4 would be safe as it would take up [60, 61, 62, 63]. On 64 bit linux systems a long double is typically on 10 bytes of size. A 4 byte alignment obviously wouldn't work since starting at address 60 would lead to it overflowing, and a 10 byte alignment would also mark 60 as fine for it to start which it isn't. Rather you need the smallest factor of 64 which is as large as your piece of data for proper alignment. A good property of c = 2^n, is its factors are 2^x for 0 <= int x <= n. So a 10 byte long double would be wasting 6 bytes of space as it needs to be properly 16 byte aligned.
+
+```
+struct IntDoubleInt {
+    int int_val_1;      // needs to be 4 byte aligned [0:3]
+    double double_val;  // needs to be 8 byte aligned [8:15]
+    int int_val_2;      // needs to be 4 byte aligned [16:19]
+};  // struct has 8 byte alignment, but it ends at 19 (20 bytes used), this isn't a multiple of 20
+    // so we need to add some padding at the end. So it would take [0:23] or 24 bytes total
+
+struct IntIntDouble {
+    int int_val_1;      // needs to be 4 byte aligned [0:3]
+    int int_val_2;      // needs to be 4 byte aligned [4:7]
+    double double_val;  // needs to be 8 byte aligned [8:15]
+};  // struct has the alignment of its largest elements alignment which is 8 bytes here. So [0:15]
+    // works out with no end padding as thats a multiple of 8.
+```
+
+This is an example in practice, when creating a struct / class the standard guarantees that the order you define members in is the same order they are laid out in memory. For the IntDoubleInt the struct itself is 8 byte aligned because the struct has the alignment of the largest alignment of its members. This means the struct is starting at an address which is a multiple of 8. We then add an int, a multiple of 8 is a multiple of 4 so no padding needs to be considered here. But now the next address is a 4 offset from a multiple of 8, so to add a double we insert padding which is just empty space. We can then insert the 4 byte int. This has used up 4 bytes from the first int, 4 from padding, then another 8 from the float, 4 from the int which adds up to 20 bytes. But the data needs to take up the whole alignments worth of space so it adds 4 bytes of padding at the end to keep the struct aligned. This results in it taking 24 bytes total. In the IntIntDouble case there is no alignment issues though so its only taking up 16 bytes, this is 1/3 less space used from good ordering of members. Because the standard guarantees order you define members in is the same order they are laid out in memory the compiler is not free to reorder them, its completely up to the programmer.
+
+```
+static_assert(sizeof(IntIntDouble) == 16);
+static_assert(sizeof(IntIntDouble) == (sizeof(int) + sizeof(int) + sizeof(double)));
+
+static_assert(sizeof(IntDoubleInt) != 16);
+static_assert(sizeof(IntDoubleInt) != (sizeof(int) + sizeof(int) + sizeof(double)));
+static_assert(sizeof(IntDoubleInt) == 24);
+```
+
+Because of that these static asserts pass.
+
 # plans
 
 - Benchmarks for different types of containers, eg vector vs sparse set vs linked list vs colony/hive
@@ -410,3 +445,7 @@ In a handwavy sense Makes sense its ~2x slower seeing its doubled the number of 
 - simd/vectorisation falls into SOA kinda
 - false sharing messing with concurrency
 - maybe LTO
+
+```
+
+```

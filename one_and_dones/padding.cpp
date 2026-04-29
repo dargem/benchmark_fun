@@ -7,7 +7,7 @@
 struct IntIntDouble {
     int int_val_1;      // needs to be 4 byte aligned [0:3]
     int int_val_2;      // needs to be 4 byte aligned [4:7]
-    double double_val;  // needs to be 8 byte aligned [7:15]
+    double double_val;  // needs to be 8 byte aligned [8:15]
 };  // struct has the alignment of its largest elements alignment which is 8 bytes here. So [0:15]
     // works out with no end padding as thats a multiple of 8.
 
