@@ -3,6 +3,7 @@
 #include <stdfloat>
 
 #include "src/benchmarks/SOA_AOS/structures.hpp"
+#include "src/benchmarks/SSO/small_string_optimisation.hpp"
 #include "src/benchmarks/attributes/likely_attributes.hpp"
 #include "src/benchmarks/bench_runner.hpp"
 #include "src/benchmarks/branch_prediction/branch_prediction_sorted.hpp"
@@ -28,6 +29,7 @@ using benchmarks::MersenneTwister;
 using benchmarks::Policy;
 using benchmarks::ReservationSize;
 using benchmarks::SOA;
+using benchmarks::StringRunner;
 using benchmarks::VectorAccess;
 using benchmarks::VectorWrapper;
 using benchmarks::Xoroshiro128plus;
@@ -233,6 +235,30 @@ void runReservedVectorBenchmark() {
     benchRunner.clearBenchables();
 }
 
+void runStringOptimsationBenchmark() {
+    BenchRunner& benchRunner = BenchRunner::getInstance();
+    benchRunner.clearBenchables();
+
+    {
+        auto string15 = std::make_unique<StringRunner<15>>();
+        auto string16 = std::make_unique<StringRunner<16>>();
+        auto string17 = std::make_unique<StringRunner<17>>();
+        auto string18 = std::make_unique<StringRunner<18>>();
+
+        benchRunner.addBenchable(std::move(string15));
+        benchRunner.addBenchable(std::move(string16));
+        benchRunner.addBenchable(std::move(string17));
+        benchRunner.addBenchable(std::move(string18));
+    }
+
+    constexpr static size_t ITERATIONS{10000};
+    constexpr static size_t SAMPLES{300};
+
+    benchRunner.runBenchmarks(ITERATIONS, SAMPLES);
+    benchRunner.printResults();
+    benchRunner.clearBenchables();
+}
+
 int main() {
     try {
         // runRNGBenchmark();
@@ -241,9 +267,12 @@ int main() {
         // testSOA_AOS_Iteration();
         // runAttributeBenchmark();
         // runExecutionPolicyBenchmark();
-        runReservedVectorBenchmark();
-    } catch (const std::runtime_error e) {
+        // runReservedVectorBenchmark();
+        runStringOptimsationBenchmark();
+    } catch (const std::exception& e) {
         std::cout << "Error: " << e.what() << std::endl;
+    } catch (...) {
+        std::cout << "Caught unknown exception type" << std::endl;
     }
 
     return 0;

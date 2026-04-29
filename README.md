@@ -177,7 +177,7 @@ Tests used: 1000
 
 Obviously trying to organize data in a way operations can be vectorized can be very counterintuitive,
 but up to a 10x performance increase is a must have for some performance critical systems.
-Game engines make heavy use of this through ECS (entity component systems).
+Game engines make heavy use of this through using an ECS (entity component system).
 
 # Execution Policies
 
@@ -445,7 +445,3 @@ Because of that these static asserts pass.
 - simd/vectorisation falls into SOA kinda
 - false sharing messing with concurrency
 - maybe LTO
-
-```
-
-```
