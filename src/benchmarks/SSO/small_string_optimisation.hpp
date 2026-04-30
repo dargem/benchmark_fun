@@ -9,6 +9,8 @@
 
 namespace benchmarks {
 
+static_assert(sizeof(std::string) == 32);
+
 template <size_t N>
 class StringRunner : public Benchable {
    public:

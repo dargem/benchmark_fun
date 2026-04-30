@@ -245,7 +245,7 @@ std::string though is often considered badly performant due to this though as it
 A naively implemented string implementation would look something like a vector, with a pointer to its heap allocated resource and two size_t's, capacity of the resource and current size.
 This is logical but something like std::string = ""; would result in an expensive heap allocation to store just a null terminator.
 The trick involves type punning, what if rather than heap allocating memory, you rather use the 16 bytes from the pointer + capacity to store it.
-Before an explanation this is an example of how it looks blind when benchmarking.
+Before an explanation, this is an example of how it looks blind when benchmarking.
 
 ```
 ---Summary statistics for String of size 15---
@@ -273,35 +273,59 @@ Sample standard deviation: 6932.64
 Tests used: 300
 ```
 
-This can be seen incredibly cleanly, an increase of size to 17 from 16 results in a 3x drop in performance! This is a clear drop off between stack and heap allocation "modes".
-
-Note that by a string of size 15, I mean it holds 15 bytes which includes the null terminator in those 15.
-
-Essentially something like this for a good
+This can be seen incredibly cleanly, an increase of size held to 17 bytes from 16 bytes results in a 3x drop in performance!
+This is a clear drop off between stack and heap allocation "modes", this is called Small String Optimization as you avoid needing a heap allocation for small strings.
+Note that by a string of size 16, I mean it holds 16 bytes total which includes the null terminator, not 16 characters + hidden 17th character null terminator.
+So the dropoff starting at 16 shows the String uses at max a 16 byte char stack buffer inside it.
+This used the libstdc++ standard library implementation where a string is 32 bytes.
+A simplified version of how its implemented is along these lines.
 
 ```
-
 class String {
 
     class Union {
-        struct {
-            char* data;
-            size_t capacity;
-        } heap;
-
-        struct {
-            char stackbuf[sizeof(heap) - 1];
-            uint8_t stacksize;
-        } stack;
+        size_t capacity;
+        char stackbuf[16];
     };
 
+    char* data;
     size_t size;
-
 };
-
 ```
 
-Small String Optimization (SSO) is a technique to get around these heap allocations, at least for small strings.
+The union member only takes up the space of its largest member which is the 16 byte stackbuf.
+Here this reuses the 8byte capacity field with the 16 byte charbuf.
+This doesn't typepun both data + capacity, just capacity so this "wastes" 8 bytes when its using a heap allocated buffer which only needs 2 size_t's and the pointer.
+A benefit is checking mode is simple, if data points to the stackbuf you are using it, if the data is pointing to something else you have a heap allocated buffer.
+<br>
+
+There are alternative implementations also like the libc++ one type punning both size_t's and the data pointer for 23 characters of storage and a 24 byte total size.
+A probably inaccurate simplication is below:
+
+```
+class String {
+    class Union {
+        struct {
+            char* data;
+            size_t size;
+            size_t capacity;
+        } heapMode;
+
+        struct {
+            std::array<char, sizeof(heapMode) - 1> stackbuf;
+            uint8_t size;
+        } stackMode;
+    };
+};
+```
+
+The issue is you need a way to check which mode the string is in, should data be interpreted in stack or heap mode?
+Note even if both size's were 8 bytes so they could get interpreted normally, the string can reserve memory or it could've downsized while having memory allocated prior.
+This can be done through the most insignificant bit of a set address which would overlap with size in stack mode.
+In stack mode this would reduce the state's size can represent down to 127 from 255.
+This is fine though since in stack mode it can only really hold 22 character by the user (23 char's total due to null terminator).
+In heap mode the capacity field would drop to only being able to hold 2^63 states which is still an excessive amount.
+A more accurate explanation is [here](https://joellaity.com/2020/01/31/string.html).
 
 # Sorting to help with branch prediction
 
@@ -489,16 +513,16 @@ A way to get around this is through aligning data. For example a cache line is t
 ```
 
 struct IntDoubleInt {
-int int_val_1; // needs to be 4 byte aligned [0:3]
-double double_val; // needs to be 8 byte aligned [8:15]
-int int_val_2; // needs to be 4 byte aligned [16:19]
+    int int_val_1; // needs to be 4 byte aligned [0:3]
+    double double_val; // needs to be 8 byte aligned [8:15]
+    int int_val_2; // needs to be 4 byte aligned [16:19]
 }; // struct has 8 byte alignment, but it ends at 19 (20 bytes used), this isn't a multiple of 20
 // so we need to add some padding at the end. So it would take [0:23] or 24 bytes total
 
 struct IntIntDouble {
-int int_val_1; // needs to be 4 byte aligned [0:3]
-int int_val_2; // needs to be 4 byte aligned [4:7]
-double double_val; // needs to be 8 byte aligned [8:15]
+    int int_val_1; // needs to be 4 byte aligned [0:3]
+    int int_val_2; // needs to be 4 byte aligned [4:7]
+    double double_val; // needs to be 8 byte aligned [8:15]
 }; // struct has the alignment of its largest elements alignment which is 8 bytes here. So [0:15]
 // works out with no end padding as thats a multiple of 8.
 
