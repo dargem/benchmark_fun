@@ -300,7 +300,7 @@ A benefit is checking mode is simple, if data points to the stackbuf you are usi
 <br>
 
 There are alternative implementations also like the libc++ one type punning both size_t's and the data pointer for 23 characters of storage and a 24 byte total size.
-A probably inaccurate simplication is below:
+A probably inaccurate simplification is below:
 
 ```
 class String {
@@ -457,11 +457,11 @@ C++ 20 introduces the [[likely]] and [[unlikely]] attributes which are "hints" t
 ```
 
 if constexpr (A == Attribute::UNLIKELY) {
-if (number > SIZE_NEEDED_FOR_SUCCESS) [[unlikely]] { // lie 95% is unlikely
-successes += 1;
-} else if (number == SIZE_NEEDED_FOR_SUCCESS) [[likely]] { // lie ~0% is likely
-equalities += 1;
-}
+    if (number > SIZE_NEEDED_FOR_SUCCESS) [[unlikely]] { // lie 95% is unlikely
+        successes += 1;
+    } else if (number == SIZE_NEEDED_FOR_SUCCESS) [[likely]] { // lie ~0% is likely
+        equalities += 1;
+    }
 }
 
 ```

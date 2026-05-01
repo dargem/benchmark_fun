@@ -16,6 +16,7 @@
 #include "src/stats/anovas.hpp"
 #include "src/stats/student_T_tests.hpp"
 #include "src/timer.hpp"
+#include "src/utils/arena.hpp"
 
 using benchmarks::AOS;
 using benchmarks::Attribute;
