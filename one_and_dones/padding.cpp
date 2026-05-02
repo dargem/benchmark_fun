@@ -55,10 +55,24 @@ struct FiveChar {
 
 static_assert(sizeof(FiveChar));
 
+struct A {
+    struct {
+        int a;   // 4 byte aligned
+        char b;  // 1 byte aligned
+    } anon;      // 4 byte aligned, 8 total 3 padding
+
+    char c;  // 1 byte aligned
+};  // 4 byte aligned, 12 total, struct + 3 padding
+
+struct B {
+    int a;   // 4 byte aligned
+    char b;  // 1 byte aligned
+};  // 4 byte aligned, 8 total 3 padding
+
 int main() {
     std::cout << "Size of IntIntDouble is: " << sizeof(IntIntDouble) << std::endl;  // 16
     std::cout << "Size of IntDoubleInt is: " << sizeof(IntDoubleInt) << std::endl;  // 24
+    std::cout << "Size of A is: " << sizeof(A) << std::endl;                        // 24
+    std::cout << "Size of A is: " << sizeof(B) << std::endl;
     return 0;
 }
-
-// We have effectively saved 8 bytes from good layout choice

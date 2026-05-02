@@ -10,4 +10,7 @@ namespace utils {
 template <typename T>
 concept Numeric = std::is_arithmetic_v<T>;
 
+template <typename... Ts>
+struct TypePack {};
+
 }  // namespace utils
