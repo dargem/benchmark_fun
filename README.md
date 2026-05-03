@@ -543,6 +543,76 @@ static_assert(sizeof(IntDoubleInt) == 24);
 
 Because of that these static asserts pass.
 
+# Empty Base Optimization, limitations and [[no_unique_address]]
+
+In C++ every object is guaranteed a unique memory address during its lifetime.
+Because of this the size of an empty struct/class or a functor (lambda) with no capture clause is 1.
+This could lead to issues though, think about a vector which needs an instance of an allocator.
+std::allocator is completely stateless, so having it as a member would result in it taking up a byte of space.
+This wouldn't be ideal obviously as it would bloat the sizes of objects for no real reason.
+This is solved through empty base optimization.
+As a base of a class does not require a unique address, it shares address with the first non static member.
+
+```
+
+struct Empty {};
+struct BaseOptimization : public Empty {
+    std::byte b;
+};
+static_assert(sizeof(BaseOptimization) == 1);
+
+struct NoBaseOptimization {
+    std::byte b;
+    Empty e;
+};
+static_assert(sizeof(NoBaseOptimization) == 2);
+
+struct FailedBaseOptimization : Empty {
+    BaseOptimization b;
+};
+static_assert(sizeof(FailedBaseOptimization) == 2);
+
+```
+
+Another interesting thing is empty base optimization fails if the first non static member (whom address it overlaps) is the same type, or has a base which is the same type as that member.
+
+```
+
+struct CorrectBaseOptimization : Empty {
+    std::byte b;
+    Empty e;
+};
+static_assert(sizeof(CorrectBaseOptimization) == 2);
+
+struct IncorrectBaseOptimization : Empty {
+    Empty e; // first non static member is of same type, so can't overlap the address
+    std::byte b;
+};
+static_assert(sizeof(IncorrectBaseOptimization) == 3);
+
+```
+
+A C++ 20 addition is the attribute [[no_unique_address]] which loosens the guarantee for a classes member to have a unique memory address.
+This would allow something similar to empty base optimization, but for empty members.
+
+```
+
+struct MemberOptimization {
+    std::byte c;
+    // no unique address allows the compiler to not give e an unique memory address since it has no members
+    [[no_unique_address]] Empty e;
+};
+static_assert(sizeof(MemberOptimization) == 1);
+// offsetof gets the offset of a member from the start of the object.
+static_assert(offsetof(MemberOptimization, e) == offsetof(MemberOptimization, e));
+
+```
+
+This allows the cutting of one byte from this struct which is good since it doesn't really need a unique address.
+This is interesting though that its been added as an attribute, as compilers are allowed to ignore attributes.
+This means the memory layout of objects could be dependent on compiler which is somewhat messy.
+GCC and CLANG will generally follow it, but MSVC always ignores it due to it breaking ABI as it changes object layouts.
+
 # plans
 
 - Benchmarks for different types of containers, eg vector vs sparse set vs linked list vs colony/hive
