@@ -479,19 +479,19 @@ This tests with attributes correct (LIKELY), with attributes wrong (UNLIKELY) an
 
 ```
 
----Summary statistics for Branch Prediction with attribute LIKELY---
+---Summary statistics for Compiler Branch Prediction with attribute LIKELY---
 Sample mean cycles per test: 296072
 Confidence interval: 294652-297492
 Sample standard deviation: 51214.9
 Tests used: 5000
 
----Summary statistics for Branch Prediction with attribute UNLIKELY---
+---Summary statistics for Compiler Branch Prediction with attribute UNLIKELY---
 Sample mean cycles per test: 573690
 Confidence interval: 570966-576413
 Sample standard deviation: 98230.8
 Tests used: 5000
 
----Summary statistics for Branch Prediction with attribute DEFAULT BEHAVIOR---
+---Summary statistics for Compiler Branch Prediction with attribute DEFAULT BEHAVIOR---
 Sample mean cycles per test: 306852
 Confidence interval: 305355-308348
 Sample standard deviation: 53977.8
@@ -519,25 +519,25 @@ The results were initially surprising but make a lot of sense.
 
 ```
 
----Summary statistics for Branch Prediction with attribute LIKELY---
+---Summary statistics for Compiler Branch Prediction with attribute LIKELY---
 Sample mean cycles per test: 307373
 Confidence interval: 306878-307868
 Sample standard deviation: 17855.4
 Tests used: 5000
 
----Summary statistics for Branch Prediction with attribute UNLIKELY---
+---Summary statistics for Compiler Branch Prediction with attribute UNLIKELY---
 Sample mean cycles per test: 581437
 Confidence interval: 579471-583403
 Sample standard deviation: 70911.8
 Tests used: 5000
 
----Summary statistics for Branch Prediction with attribute DEFAULT BEHAVIOR---
+---Summary statistics for Compiler Branch Prediction with attribute DEFAULT BEHAVIOR---
 Sample mean cycles per test: 321237
 Confidence interval: 319885-322590
 Sample standard deviation: 48769.3
 Tests used: 5000
 
----Summary statistics for Branch Prediction with attribute BRANCHLESS VERSION---
+---Summary statistics for Compiler Branch Prediction with attribute BRANCHLESS VERSION---
 Sample mean cycles per test: 461569
 Confidence interval: 459998-463139
 Sample standard deviation: 56648.7
@@ -564,6 +564,38 @@ In the unlikely version I am practically guaranteed 2x writes and 2x boolean log
 In the branchless version while there is no cost of misprediction, I will have 2 writes and 2 boolean logic ops always time.
 Because the branch prediction is right ~95% of the time the branch misprediction isn't that costly while the effective short circuiting is big.
 So theoretical decreasing the chance of if (number > SIZE_NEEDED_FOR_SUCCESS) [[likely]] to something like 70% from 95% could slow it down enough for branchless to come ahead.
+
+```
+
+---Summary statistics for Compiler Branch Prediction with attribute LIKELY---
+Sample mean cycles per test: 1.024e+06
+Confidence interval: 1.01974e+06-1.02825e+06
+Sample standard deviation: 153622
+Tests used: 5000
+
+---Summary statistics for Compiler Branch Prediction with attribute UNLIKELY---
+Sample mean cycles per test: 1.3052e+06
+Confidence interval: 1.30084e+06-1.30955e+06
+Sample standard deviation: 156951
+Tests used: 5000
+
+---Summary statistics for Compiler Branch Prediction with attribute DEFAULT BEHAVIOR---
+Sample mean cycles per test: 1.14923e+06
+Confidence interval: 1.14506e+06-1.1534e+06
+Sample standard deviation: 150369
+Tests used: 5000
+
+---Summary statistics for Compiler Branch Prediction with attribute BRANCHLESS VERSION---
+Sample mean cycles per test: 472549
+Confidence interval: 470880-474217
+Sample standard deviation: 60183.3
+Tests used: 5000
+
+```
+
+Doing this with a 70% chance for the first condition, short circuiting happens less and branch prediction costs should increase.
+We see branch prediction costs have dominated the short circuiting benefit with the branchless version being fastest by a large 2x factor.
+Furthermore the unlikely version is only 1.3x slower rather than 1.9x slower as short circuiting benefits have dropped off.
 
 # Reorganizing a struct for less memory usage
 

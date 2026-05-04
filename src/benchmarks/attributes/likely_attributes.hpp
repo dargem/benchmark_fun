@@ -19,7 +19,7 @@ class AttributeOptimisation : public Benchable {
    public:
     AttributeOptimisation(size_t listSize) :
             Benchable(BenchType::ATTRIBUTE_BRANCH_PREDICTION,
-                      std::format("Branch Prediction with attribute {}", ATTRIBUTE_NAME)),
+                      std::format("Compiler Branch Prediction with attribute {}", ATTRIBUTE_NAME)),
             listSize{listSize} {
         resetBenchmark();
     }
@@ -101,7 +101,7 @@ class AttributeOptimisation : public Benchable {
     static constexpr int DISTRIBUTION_MAX{100000};
     static constexpr int DISTRIBUTION_MIN{0};
     // 95% chance for a success here with a uniform distribution
-    static constexpr int SIZE_NEEDED_FOR_SUCCESS{(DISTRIBUTION_MAX + DISTRIBUTION_MIN) / 20};
+    static constexpr int SIZE_NEEDED_FOR_SUCCESS{(DISTRIBUTION_MAX + DISTRIBUTION_MIN) / 20 * 6};
 };
 
 }  // namespace benchmarks
