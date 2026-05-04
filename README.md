@@ -480,28 +480,90 @@ This tests with attributes correct (LIKELY), with attributes wrong (UNLIKELY) an
 ```
 
 ---Summary statistics for Branch Prediction with attribute LIKELY---
-Sample mean cycles per test: 208202
-Confidence interval: 207068-209336
-Sample standard deviation: 40907.4
+Sample mean cycles per test: 296072
+Confidence interval: 294652-297492
+Sample standard deviation: 51214.9
 Tests used: 5000
 
 ---Summary statistics for Branch Prediction with attribute UNLIKELY---
-Sample mean cycles per test: 436717
-Confidence interval: 434746-438688
-Sample standard deviation: 71103.2
+Sample mean cycles per test: 573690
+Confidence interval: 570966-576413
+Sample standard deviation: 98230.8
 Tests used: 5000
 
 ---Summary statistics for Branch Prediction with attribute DEFAULT BEHAVIOR---
-Sample mean cycles per test: 210914
-Confidence interval: 209475-212352
-Sample standard deviation: 51878.2
+Sample mean cycles per test: 306852
+Confidence interval: 305355-308348
+Sample standard deviation: 53977.8
 Tests used: 5000
 
 ```
 
 There is a statistically significant result that default behavior performs slightly worse surprisingly, though difference is very mild.
-Using attributes incorrectly though tanks performance, more than 2x slower with the reversed attributes.
+Using attributes incorrectly though tanks performance, slightly under 2x slower with the reversed attributes.
 In a handwavy sense Makes sense its ~2x slower seeing its doubled the number of evaluations needed.
+Both programs still have to pay the same branch misprediction costs either way so thats not a real issue.
+For fun I added a simple branchless version like this expecting it to improve performance by eliminating branch mispredictions.
+
+```
+
+// A manual branchless implementation
+if constexpr (A == Attribute::BRANCHLESS) {
+    successes += (number > SIZE_NEEDED_FOR_SUCCESS);
+    equalities += (number == SIZE_NEEDED_FOR_SUCCESS);
+}
+
+```
+
+The results were initially surprising but make a lot of sense.
+
+```
+
+---Summary statistics for Branch Prediction with attribute LIKELY---
+Sample mean cycles per test: 307373
+Confidence interval: 306878-307868
+Sample standard deviation: 17855.4
+Tests used: 5000
+
+---Summary statistics for Branch Prediction with attribute UNLIKELY---
+Sample mean cycles per test: 581437
+Confidence interval: 579471-583403
+Sample standard deviation: 70911.8
+Tests used: 5000
+
+---Summary statistics for Branch Prediction with attribute DEFAULT BEHAVIOR---
+Sample mean cycles per test: 321237
+Confidence interval: 319885-322590
+Sample standard deviation: 48769.3
+Tests used: 5000
+
+---Summary statistics for Branch Prediction with attribute BRANCHLESS VERSION---
+Sample mean cycles per test: 461569
+Confidence interval: 459998-463139
+Sample standard deviation: 56648.7
+Tests used: 5000
+
+```
+
+The branchless version is actually significantly slower than the default version that had direct conditional branches,
+However its still a bit faster than the branch prediction with the incorrect [[unlikely]].
+In retrospect this should've been completely expected though.
+
+```
+if (number > SIZE_NEEDED_FOR_SUCCESS) [[likely]] {
+    successes += 1;
+} else if (number == SIZE_NEEDED_FOR_SUCCESS) [[unlikely]] {
+    equalities += 1;
+}
+```
+
+The branch predictor will likely assume number > SIZE_NEEDED_FOR_SUCCESS is likely,
+unless it mispredicts and needs to clear the pipeline the else condition check and write isn't executed.
+In the likely version I will have 1 write and 1 boolean logic operation most of the time with the occasional branch misprediction.
+In the unlikely version I am practically guaranteed 2x writes and 2x boolean logic operations with the occasional branch misprediction.
+In the branchless version while there is no cost of misprediction, I will have 2 writes and 2 boolean logic ops always time.
+Because the branch prediction is right ~95% of the time the branch misprediction isn't that costly while the effective short circuiting is big.
+So theoretical decreasing the chance of if (number > SIZE_NEEDED_FOR_SUCCESS) [[likely]] to something like 70% from 95% could slow it down enough for branchless to come ahead.
 
 # Reorganizing a struct for less memory usage
 
