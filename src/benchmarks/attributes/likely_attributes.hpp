@@ -9,7 +9,7 @@
 
 namespace benchmarks {
 
-enum class Attribute { LIKELY, UNLIKELY, DEFAULT };
+enum class Attribute { LIKELY, UNLIKELY, DEFAULT, BRANCHLESS };
 
 // C++ 20 introduces 2 questionably useful attributes [[likely]] and [[unlikely]] which supposedly
 // give hints to the compiler about whether a path of execution is more or less likely than another
@@ -71,6 +71,12 @@ class AttributeOptimisation : public Benchable {
                         equalities += 1;
                     }
                 }
+
+                // A manual branchless implementation
+                if constexpr (A == Attribute::BRANCHLESS) {
+                    successes += (number > SIZE_NEEDED_FOR_SUCCESS);
+                    equalities += (number == SIZE_NEEDED_FOR_SUCCESS);
+                }
             }
         }
     }
@@ -86,6 +92,8 @@ class AttributeOptimisation : public Benchable {
             return "UNLIKELY";
         case Attribute::DEFAULT:
             return "DEFAULT BEHAVIOR";
+        case Attribute::BRANCHLESS:
+            return "BRANCHLESS VERSION";
         }
         return "FALLTHROUGH ISSUE";
     }();

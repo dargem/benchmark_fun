@@ -171,10 +171,12 @@ void runAttributeBenchmark() {
         auto likely = std::make_unique<AttributeOptimisation<Attribute::LIKELY>>(LIST_SIZE);
         auto unlikely = std::make_unique<AttributeOptimisation<Attribute::UNLIKELY>>(LIST_SIZE);
         auto defaultBench = std::make_unique<AttributeOptimisation<Attribute::DEFAULT>>(LIST_SIZE);
+        auto branchless = std::make_unique<AttributeOptimisation<Attribute::BRANCHLESS>>(LIST_SIZE);
 
         benchRunner.addBenchable(std::move(likely));
         benchRunner.addBenchable(std::move(unlikely));
         benchRunner.addBenchable(std::move(defaultBench));
+        benchRunner.addBenchable(std::move(branchless));
     }
 
     constexpr static size_t ITERATIONS{5};
@@ -266,10 +268,10 @@ int main() {
         // runBranchPredictionBenchmark();
         // runVectorRandomAccessBenchmark();
         // testSOA_AOS_Iteration();
-        // runAttributeBenchmark();
+        runAttributeBenchmark();
         // runExecutionPolicyBenchmark();
         // runReservedVectorBenchmark();
-        runStringOptimsationBenchmark();
+        // runStringOptimsationBenchmark();
     } catch (const std::exception& e) {
         std::cout << "Error: " << e.what() << std::endl;
     } catch (...) {
