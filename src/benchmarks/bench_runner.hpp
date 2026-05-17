@@ -4,6 +4,7 @@
 
 #include <boost/math/distributions/fisher_f.hpp>
 #include <boost/math/distributions/students_t.hpp>
+#include <concepts>
 #include <format>
 #include <iostream>
 #include <memory>
@@ -135,8 +136,6 @@ class BenchmarkCollection {
     }
 
    private:
-    
-
     // Levene's test for the equality of variance, this is incorrect currently
     // returns whether it has equal variances
     bool hasEqualVariances(std::vector<Evaluation>& evaluations, double alpha = 0.95) {
@@ -188,8 +187,6 @@ class BenchmarkCollection {
         // so this returns true as it is considered as having equal variances!
         return W < criticalF;
     }
-
-    
 
     std::vector<Benchmark> benchmarks;
 };
@@ -254,5 +251,30 @@ class BenchRunner {
     std::vector<std::unique_ptr<Benchable>> benchables;
     BenchmarkCollection benchmarkCollection;
 };
+
+// Takes in a variadic number of benchables
+template <typename... Ts>
+    requires(std::derived_from<std::remove_cvref_t<Ts>, Benchable> && ...)
+void executeBench(size_t iterations, size_t numSamples, Ts&&... benches) {
+    BenchmarkCollection collection = BenchmarkCollection();
+    Timer& timer = Timer::getInstance();
+
+    auto bench = [&]<typename B>(B& benchable) {
+        timer.startTimer();
+        benchable.runBenchmark(iterations);
+        size_t cyclesTaken = timer.endTimer();
+
+        benchable.resetBenchmark();
+
+        // add results into the benchmark collection
+        collection.addTime(benchable.getName(), cyclesTaken);
+    };
+
+    for (size_t i{}; i < numSamples; ++i) {
+        (bench(benches), ...);
+    }
+
+    collection.print();
+}
 
 }  // namespace benchmarks

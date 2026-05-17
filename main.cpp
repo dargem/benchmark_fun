@@ -239,27 +239,37 @@ void runReservedVectorBenchmark() {
 }
 
 void runStringOptimsationBenchmark() {
-    BenchRunner& benchRunner = BenchRunner::getInstance();
-    benchRunner.clearBenchables();
+    // BenchRunner& benchRunner = BenchRunner::getInstance();
+    // benchRunner.clearBenchables();
 
-    {
-        auto string15 = std::make_unique<StringRunner<15>>();
-        auto string16 = std::make_unique<StringRunner<16>>();
-        auto string17 = std::make_unique<StringRunner<17>>();
-        auto string18 = std::make_unique<StringRunner<18>>();
+    // {
+    //     auto string15 = std::make_unique<StringRunner<15>>();
+    //     auto string16 = std::make_unique<StringRunner<16>>();
+    //     auto string17 = std::make_unique<StringRunner<17>>();
+    //     auto string18 = std::make_unique<StringRunner<18>>();
 
-        benchRunner.addBenchable(std::move(string15));
-        benchRunner.addBenchable(std::move(string16));
-        benchRunner.addBenchable(std::move(string17));
-        benchRunner.addBenchable(std::move(string18));
-    }
+    //     benchRunner.addBenchable(std::move(string15));
+    //     benchRunner.addBenchable(std::move(string16));
+    //     benchRunner.addBenchable(std::move(string17));
+    //     benchRunner.addBenchable(std::move(string18));
+    // }
+
+    // constexpr static size_t ITERATIONS{10000};
+    // constexpr static size_t SAMPLES{300};
+
+    // benchRunner.runBenchmarks(ITERATIONS, SAMPLES);
+    // benchRunner.printResults();
+    // benchRunner.clearBenchables();
+
+    auto string15 = StringRunner<15>();
+    auto string16 = StringRunner<16>();
+    auto string17 = StringRunner<17>();
+    auto string18 = StringRunner<18>();
 
     constexpr static size_t ITERATIONS{10000};
     constexpr static size_t SAMPLES{300};
 
-    benchRunner.runBenchmarks(ITERATIONS, SAMPLES);
-    benchRunner.printResults();
-    benchRunner.clearBenchables();
+    benchmarks::executeBench(ITERATIONS, SAMPLES, string15, string16, string17, string18);
 }
 
 int main() {
@@ -268,10 +278,10 @@ int main() {
         // runBranchPredictionBenchmark();
         // runVectorRandomAccessBenchmark();
         // testSOA_AOS_Iteration();
-        runAttributeBenchmark();
+        // runAttributeBenchmark();
         // runExecutionPolicyBenchmark();
         // runReservedVectorBenchmark();
-        // runStringOptimsationBenchmark();
+        runStringOptimsationBenchmark();
     } catch (const std::exception& e) {
         std::cout << "Error: " << e.what() << std::endl;
     } catch (...) {
