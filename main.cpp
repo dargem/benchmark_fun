@@ -137,7 +137,7 @@ void runExecutionPolicyBenchmark() {
 void runReservedVectorBenchmark() {
     // given each element inside is 8 bytes, 3.2 GB
     constexpr static size_t ELEMENTS{5000000};
-    constexpr static size_t SAMPLES{300000};
+    constexpr static size_t SAMPLES{30};
 
     auto noReserveVector = VectorWrapper<ReservationSize::ZERO_BYTES>();
     // auto bigReserveVector = VectorWrapper<ReservationSize::FIFTEEN_GIGABYTE>();
@@ -163,10 +163,10 @@ int main() {
         // runBranchPredictionBenchmark();
         // runVectorRandomAccessBenchmark();
         // testSOA_AOS_Iteration();
-        // runAttributeBenchmark();
+        runAttributeBenchmark();
         // runExecutionPolicyBenchmark();
         // runReservedVectorBenchmark();
-        runStringOptimsationBenchmark();
+        // runStringOptimsationBenchmark();
     } catch (const std::exception& e) {
         std::cout << "Error: " << e.what() << std::endl;
     } catch (...) {

@@ -340,22 +340,20 @@ as for the ~ first half of the list it'll be smaller than the mean (approximatel
 This makes branch prediction very easy, so sorting a list should result in better performance.
 
 ```
-
 ---Summary statistics for Branch Prediction Sorted Version---
-Sample mean cycles per test: 1.21501e+06
-Confidence interval: 1.19809e+06-1.23193e+06
-Sample standard deviation: 148924
+Sample mean cycles per test: 1.12059e+06
+Confidence interval: 1.11124e+06-1.12994e+06
+Sample standard deviation: 82293.3
 Tests used: 300
 
 ---Summary statistics for Branch Prediction Unsorted Version---
-Sample mean cycles per test: 2.17935e+06
-Confidence interval: 2.15972e+06-2.19897e+06
-Sample standard deviation: 172743
+Sample mean cycles per test: 2.13579e+06
+Confidence interval: 2.13264e+06-2.13894e+06
+Sample standard deviation: 27723.8
 Tests used: 300
-
 ```
 
-As seen decent ~80% performance increase by a seemingly strange optimization for the hardware.
+As seen decent ~90% performance increase by a seemingly strange optimization for the hardware.
 
 # Random access of char vs uint8_t vs bool vectors
 
@@ -368,28 +366,26 @@ This is good for memory but as memory is addressed by the byte this leads to som
 
 Would expect random access to be the same for char and uint8_t vectors, longer for bool vectors.
 Benchmarks show this is usually the case, this is a bench of accessing 1000 random indices from a 10000 element array.
-~ equal for char and uint_8, ~ 50% longer for bool vectors.
+~ equal for char and uint_8, ~38% longer for bool vectors.
 
 ```
-
 ---Summary statistics for bool vector random access---
-Sample mean cycles per test: 1447.27
-Confidence interval: 1441.81-1452.72
-Sample standard deviation: 87.8774
-Tests used: 1000 <br>
+Sample mean cycles per test: 1441.61
+Confidence interval: 1417.43-1465.78
+Sample standard deviation: 389.581
+Tests used: 1000
 
 ---Summary statistics for char vector random access---
-Sample mean cycles per test: 982.49
-Confidence interval: 972.436-992.544
-Sample standard deviation: 162.025
+Sample mean cycles per test: 1045.53
+Confidence interval: 1026.33-1064.73
+Sample standard deviation: 309.429
 Tests used: 1000
 
 ---Summary statistics for uint8_t vector random access---
-Sample mean cycles per test: 976.6
-Confidence interval: 974.153-979.047
-Sample standard deviation: 39.4373
+Sample mean cycles per test: 1034.74
+Confidence interval: 1025.11-1044.37
+Sample standard deviation: 155.214
 Tests used: 1000
-
 ```
 
 But interestingly bool vectors can have improved performance in certain memory access patterns.
@@ -431,23 +427,21 @@ Tests used: 1000
 # XOROSHIRO 128+ vs Inbuilt Mersenne Twister
 
 Considerably better results from the xoroshiro 128++ rng and the inbuilt mersenne twister rng.
-Was expecting xoroshiro128+ to be substantially faster and it is, 3x faster number generation is very welcome.
+Was expecting xoroshiro128+ to be substantially faster and it is, ~3.17x faster number generation is very welcome.
 Xoroshiro also has better statistical properties.
 
 ```
-
 ---Summary statistics for Xoroshiro128+ RNG---
-Sample mean cycles per test: 3.09121e+06
-Confidence interval: 3.08428e+06-3.09813e+06
-Sample standard deviation: 60965.1
+Sample mean cycles per test: 2.52777e+06
+Confidence interval: 2.5216e+06-2.53394e+06
+Sample standard deviation: 54302.4
 Tests used: 300
 
 ---Summary statistics for Mersenne twister RNG---
-Sample mean cycles per test: 8.83133e+06
-Confidence interval: 8.75627e+06-8.90639e+06
-Sample standard deviation: 660624
+Sample mean cycles per test: 7.98123e+06
+Confidence interval: 7.92463e+06-8.03783e+06
+Sample standard deviation: 498167
 Tests used: 300
-
 ```
 
 # LIKELY / UNLIKELY Attributes
@@ -478,71 +472,64 @@ This is obviously just a hint to the compiler, definitely compiler specific and 
 This tests with attributes correct (LIKELY), with attributes wrong (UNLIKELY) and without attributes (DEFAULT Behavior).
 
 ```
-
 ---Summary statistics for Compiler Branch Prediction with attribute LIKELY---
-Sample mean cycles per test: 296072
-Confidence interval: 294652-297492
-Sample standard deviation: 51214.9
+Sample mean cycles per test: 248460
+Confidence interval: 247094-249827
+Sample standard deviation: 49292.7
 Tests used: 5000
 
 ---Summary statistics for Compiler Branch Prediction with attribute UNLIKELY---
-Sample mean cycles per test: 573690
-Confidence interval: 570966-576413
-Sample standard deviation: 98230.8
+Sample mean cycles per test: 551751
+Confidence interval: 548819-554683
+Sample standard deviation: 105757
 Tests used: 5000
 
 ---Summary statistics for Compiler Branch Prediction with attribute DEFAULT BEHAVIOR---
-Sample mean cycles per test: 306852
-Confidence interval: 305355-308348
-Sample standard deviation: 53977.8
+Sample mean cycles per test: 294556
+Confidence interval: 293124-295988
+Sample standard deviation: 51658.3
 Tests used: 5000
-
 ```
 
-There is a statistically significant result that default behavior performs slightly worse surprisingly, though difference is very mild.
-Using attributes incorrectly though tanks performance, slightly under 2x slower with the reversed attributes.
+There is a statistically significant result that default behavior is ~18.5% slower than when properly using likely.
+Using attributes incorrectly though tanks performance, 2.22x slower with the reversed attributes.
 In a handwavy sense Makes sense its ~2x slower seeing its doubled the number of evaluations needed.
-Both programs still have to pay the same branch misprediction costs either way so thats not a real issue.
 For fun I added a simple branchless version like this expecting it to improve performance by eliminating branch mispredictions.
 
 ```
-
 // A manual branchless implementation
 if constexpr (A == Attribute::BRANCHLESS) {
     successes += (number > SIZE_NEEDED_FOR_SUCCESS);
     equalities += (number == SIZE_NEEDED_FOR_SUCCESS);
 }
-
 ```
 
 The results were initially surprising but make a lot of sense.
 
 ```
-
 ---Summary statistics for Compiler Branch Prediction with attribute LIKELY---
-Sample mean cycles per test: 307373
-Confidence interval: 306878-307868
-Sample standard deviation: 17855.4
+Sample mean cycles per test: 248460
+Confidence interval: 247094-249827
+Sample standard deviation: 49292.7
 Tests used: 5000
 
 ---Summary statistics for Compiler Branch Prediction with attribute UNLIKELY---
-Sample mean cycles per test: 581437
-Confidence interval: 579471-583403
-Sample standard deviation: 70911.8
+Sample mean cycles per test: 551751
+Confidence interval: 548819-554683
+Sample standard deviation: 105757
 Tests used: 5000
 
 ---Summary statistics for Compiler Branch Prediction with attribute DEFAULT BEHAVIOR---
-Sample mean cycles per test: 321237
-Confidence interval: 319885-322590
-Sample standard deviation: 48769.3
+Sample mean cycles per test: 294556
+Confidence interval: 293124-295988
+Sample standard deviation: 51658.3
 Tests used: 5000
 
 ---Summary statistics for Compiler Branch Prediction with attribute BRANCHLESS VERSION---
-Sample mean cycles per test: 461569
-Confidence interval: 459998-463139
-Sample standard deviation: 56648.7
+Sample mean cycles per test: 398114
+Confidence interval: 396564-399664
+Sample standard deviation: 55893.9
 Tests used: 5000
-
 ```
 
 The branchless version is actually significantly slower than the default version that had direct conditional branches,
@@ -566,36 +553,34 @@ Because the branch prediction is right ~95% of the time the branch misprediction
 So theoretical decreasing the chance of if (number > SIZE_NEEDED_FOR_SUCCESS) [[likely]] to something like 70% from 95% could slow it down enough for branchless to come ahead.
 
 ```
-
 ---Summary statistics for Compiler Branch Prediction with attribute LIKELY---
-Sample mean cycles per test: 1.024e+06
-Confidence interval: 1.01974e+06-1.02825e+06
-Sample standard deviation: 153622
+Sample mean cycles per test: 951195
+Confidence interval: 946995-955395
+Sample standard deviation: 151482
 Tests used: 5000
 
 ---Summary statistics for Compiler Branch Prediction with attribute UNLIKELY---
-Sample mean cycles per test: 1.3052e+06
-Confidence interval: 1.30084e+06-1.30955e+06
-Sample standard deviation: 156951
+Sample mean cycles per test: 1.19977e+06
+Confidence interval: 1.19582e+06-1.20371e+06
+Sample standard deviation: 142179
 Tests used: 5000
 
 ---Summary statistics for Compiler Branch Prediction with attribute DEFAULT BEHAVIOR---
-Sample mean cycles per test: 1.14923e+06
-Confidence interval: 1.14506e+06-1.1534e+06
-Sample standard deviation: 150369
+Sample mean cycles per test: 1.10807e+06
+Confidence interval: 1.10447e+06-1.11168e+06
+Sample standard deviation: 129937
 Tests used: 5000
 
 ---Summary statistics for Compiler Branch Prediction with attribute BRANCHLESS VERSION---
-Sample mean cycles per test: 472549
-Confidence interval: 470880-474217
-Sample standard deviation: 60183.3
+Sample mean cycles per test: 402328
+Confidence interval: 400537-404118
+Sample standard deviation: 64589.1
 Tests used: 5000
-
 ```
 
-Doing this with a 70% chance for the first condition, short circuiting happens less and branch prediction costs should increase.
-We see branch prediction costs have dominated the short circuiting benefit with the branchless version being fastest by a large 2x factor.
-Furthermore the unlikely version is only 1.3x slower rather than 1.9x slower as short circuiting benefits have dropped off.
+Doing this with a 70% chance for the first condition, short circuiting happens less and costs from failed branch predictions wil increase.
+We see branch prediction costs have dominated the short circuiting benefit with the branchless version being fastest by a ~2.36x factor compared to 2nd place (likely).
+Furthermore the unlikely version is only ~1.26x slower rather than 2.22x slower as the short circuiting benefits have dropped off and branch misprediction costs start to dominate in time used.
 
 # Reorganizing a struct for less memory usage
 

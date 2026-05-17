@@ -38,8 +38,8 @@ class AOS : public Benchable {
         for (size_t i{}; i < iterations; ++i) {
             for (Entity& entity : entities) {
                 entity.x += 1;
-                entity.y += 1;
-                entity.z += 1;
+                // entity.y += 1;
+                // entity.z += 1;
             }
         }
     }
@@ -96,13 +96,13 @@ class SOA : public Benchable {
                 x += 1;
             }
 
-            for (T& y : y_locs) {
-                y += 1;
-            }
+            // for (T& y : y_locs) {
+            //     y += 1;
+            // }
 
-            for (T& z : z_locs) {
-                z += 1;
-            }
+            // for (T& z : z_locs) {
+            //     z += 1;
+            // }
         }
     }
 
