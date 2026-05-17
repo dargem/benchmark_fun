@@ -191,67 +191,6 @@ class BenchmarkCollection {
     std::vector<Benchmark> benchmarks;
 };
 
-// class for running benchmarks
-// also a singleton because I like singletons and its tightly linked to the timer singleton
-// so there shouldn't be multiple bench runners at a time as the current timing method doesn't allow
-// it
-class BenchRunner {
-   public:
-    // Get a reference to the benchrunner
-    static BenchRunner& getInstance() {
-        static BenchRunner benchRunner;  // lazily construct the benchrunner
-        return benchRunner;
-    }
-
-    BenchRunner(const BenchRunner&) = delete;     // no copy constructor
-    BenchRunner(BenchRunner&&) = delete;          // no move constructor
-    void operator=(const BenchRunner&) = delete;  // no copy assignment
-    void operator=(BenchRunner&&) = delete;       // no move assignment
-
-    // Move ownership of the benchable to the bench runner
-    void addBenchable(std::unique_ptr<Benchable> newBenchable) {
-        for (const auto& benchable : benchables) {
-            if (typeid(*benchable) == typeid(*newBenchable)) {
-                throw std::runtime_error("Shouldn't have two of the same benchables");
-            }
-            if (benchable->getBenchType() != newBenchable->getBenchType()) {
-                throw std::runtime_error(
-                    "Benchmark shouldn't compare benchables of different types");
-            }
-        }
-        benchables.push_back(std::move(newBenchable));
-    }
-
-    void clearBenchables() {
-        benchables.clear();
-        benchmarkCollection = BenchmarkCollection();
-    }
-
-    void runBenchmarks(size_t iterations, size_t numSamples) {
-        for (size_t i{}; i < numSamples; ++i) {
-            // Take numSamples samples for each bench
-            for (const auto& benchable : benchables) {
-                // run the benchmark
-                timer.startTimer();
-                benchable->runBenchmark(iterations);
-                size_t cyclesTaken = timer.endTimer();
-                benchable->resetBenchmark();
-
-                // add results into the benchmark collection
-                benchmarkCollection.addTime(benchable->getName(), cyclesTaken);
-            }
-        }
-    }
-
-    void printResults() { benchmarkCollection.print(); }
-
-   private:
-    BenchRunner() = default;
-    Timer& timer = Timer::getInstance();
-    std::vector<std::unique_ptr<Benchable>> benchables;
-    BenchmarkCollection benchmarkCollection;
-};
-
 // Takes in a variadic number of benchables
 template <typename... Ts>
     requires(std::derived_from<std::remove_cvref_t<Ts>, Benchable> && ...)
@@ -265,8 +204,6 @@ void executeBench(size_t iterations, size_t numSamples, Ts&&... benches) {
         size_t cyclesTaken = timer.endTimer();
 
         benchable.resetBenchmark();
-
-        // add results into the benchmark collection
         collection.addTime(benchable.getName(), cyclesTaken);
     };
 
