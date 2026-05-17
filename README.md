@@ -204,38 +204,41 @@ This is a zero cost abstraction so should be the same which is the case as seen 
 
 ```
 ---Summary statistics for Generic Indexed Loop Execution Policy Benchmark---
-Sample mean cycles per test: 1.51148e+08
-Confidence interval: 1.48761e+08-1.53535e+08
-Sample standard deviation: 8.39785e+06
+Sample mean cycles per test: 1.49309e+08
+Confidence interval: 1.47017e+08-1.51601e+08
+Sample standard deviation: 8.06464e+06
 Tests used: 50
 
 ---Summary statistics for Sequenced Execution Policy Benchmark---
-Sample mean cycles per test: 1.49426e+08
-Confidence interval: 1.47238e+08-1.51615e+08
-Sample standard deviation: 7.70051e+06
+Sample mean cycles per test: 1.45872e+08
+Confidence interval: 1.43686e+08-1.48058e+08
+Sample standard deviation: 7.69117e+06
 Tests used: 50
 
 ---Summary statistics for Unsequenced Execution Policy Benchmark---
-Sample mean cycles per test: 1.47965e+08
-Confidence interval: 1.45733e+08-1.50197e+08
-Sample standard deviation: 7.85318e+06
+Sample mean cycles per test: 1.49719e+08
+Confidence interval: 1.47966e+08-1.51473e+08
+Sample standard deviation: 6.17008e+06
 Tests used: 50
 
 ---Summary statistics for Parallel Execution Policy Benchmark---
-Sample mean cycles per test: 1.98117e+07
-Confidence interval: 1.91472e+07-2.04762e+07
-Sample standard deviation: 2.33812e+06
+Sample mean cycles per test: 1.85782e+07
+Confidence interval: 1.81993e+07-1.89572e+07
+Sample standard deviation: 1.33327e+06
 Tests used: 50
 
 ---Summary statistics for Parallel and Unsequenced Execution Policy Benchmark---
-Sample mean cycles per test: 1.91419e+07
-Confidence interval: 1.86417e+07-1.96421e+07
-Sample standard deviation: 1.75997e+06
+Sample mean cycles per test: 1.58457e+07
+Confidence interval: 1.52099e+07-1.64815e+07
+Sample standard deviation: 2.23711e+06
 Tests used: 50
 ```
 
-While explicitly allowing vectorization led to no improvement,
-the parallel execution policies were ~7.5x faster which is quite nice.
+Explicitly allowing vectorization through the unsequenced execution policy had ~ no impact on speed.
+This makes sense since the compiler should really be able to figure out it can get vectorized in this case.
+A parallel execution policy though has ~7.85x speedup which is quite nice.
+A parallel unsequenced execution policy though lead to further improvements, with it being ~9.2x faster.
+This is ~1.17x faster than the parallel execution policy which is great.
 
 # SSO
 
@@ -249,33 +252,33 @@ Before an explanation, this is an example of how it looks blind when benchmarkin
 
 ```
 ---Summary statistics for String of size 15---
-Sample mean cycles per test: 114259
-Confidence interval: 113646-114871
-Sample standard deviation: 5393.25
+Sample mean cycles per test: 113942
+Confidence interval: 113099-114785
+Sample standard deviation: 7419.43
 Tests used: 300
 
 ---Summary statistics for String of size 16---
-Sample mean cycles per test: 113952
-Confidence interval: 113456-114449
-Sample standard deviation: 4367.85
+Sample mean cycles per test: 114166
+Confidence interval: 113365-114967
+Sample standard deviation: 7048.83
 Tests used: 300
 
 ---Summary statistics for String of size 17---
-Sample mean cycles per test: 332768
-Confidence interval: 332051-333485
-Sample standard deviation: 6307.89
+Sample mean cycles per test: 322075
+Confidence interval: 320840-323310
+Sample standard deviation: 10867.1
 Tests used: 300
 
 ---Summary statistics for String of size 18---
-Sample mean cycles per test: 328449
-Confidence interval: 327661-329237
-Sample standard deviation: 6932.64
+Sample mean cycles per test: 317864
+Confidence interval: 316757-318970
+Sample standard deviation: 9740.29
 Tests used: 300
 ```
 
-This can be seen incredibly cleanly, an increase of size held to 17 bytes from 16 bytes results in a 3x drop in performance!
-This is a clear drop off between stack and heap allocation "modes", this is called Small String Optimization as you avoid needing a heap allocation for small strings.
-Note that by a string of size 16, I mean it holds 16 bytes total which includes the null terminator, not 16 characters + hidden 17th character null terminator.
+This can be seen incredibly cleanly, an increase of size held to 17 bytes from 16 bytes results in a ~2.8x drop in performance!
+This is a clear drop off between stack and heap allocation "modes", this is called SSO (small string optimization) as you avoid needing a heap allocation for small strings.
+Note that by a string of size 16, I mean it holds 16 bytes total which includes the null terminator, not 16 characters + "hidden" 17th character null terminator.
 So the dropoff starting at 16 shows the String uses at max a 16 byte char stack buffer inside it.
 This used the libstdc++ standard library implementation where a string is 32 bytes.
 A simplified version of how its implemented is along these lines.
@@ -325,6 +328,7 @@ This can be done through the most insignificant bit of a set address which would
 In stack mode this would reduce the state's size can represent down to 127 from 255.
 This is fine though since in stack mode it can only really hold 22 character by the user (23 char's total due to null terminator).
 In heap mode the capacity field would drop to only being able to hold 2^63 states which is still an excessive amount.
+This is a very interesting optimization making use of a lot of tricks.
 A more accurate explanation is [here](https://joellaity.com/2020/01/31/string.html).
 
 # Sorting to help with branch prediction

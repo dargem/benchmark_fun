@@ -163,7 +163,7 @@ int main() {
         // runBranchPredictionBenchmark();
         // runVectorRandomAccessBenchmark();
         // testSOA_AOS_Iteration();
-        runAttributeBenchmark();
+        // runAttributeBenchmark();
         // runExecutionPolicyBenchmark();
         // runReservedVectorBenchmark();
         // runStringOptimsationBenchmark();
