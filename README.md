@@ -25,7 +25,7 @@ While nice, in many cases the number of elements isn't known ahead of time so gu
 So how can we avoid resizes, without knowing the amount of storage needed ahead of time and without wasting lots of memory?
 <br>
 
-The answer is a <s>linked list</s> allocating 15 gigabytes of memory or a similarly excessive amount of memory to the vector.
+The answer is a allocating 15 gigabytes of memory or a similarly excessive amount of memory to the vector.
 Pushing back would be truly constant O(1), additionally references and iterators would stay stable when pushing to the back.
 While there is a pointer to the memory, it hasn't been accessed yet, so while this uses 15 gigabytes of virtual memory, it uses no physical memory!
 <br>
@@ -730,7 +730,6 @@ This is solved through empty base optimization.
 As a base of a class does not require a unique address, it shares address with the first non static member.
 
 ```
-
 struct Empty {};
 struct BaseOptimization : public Empty {
     std::byte b;
@@ -747,13 +746,11 @@ struct FailedBaseOptimization : Empty {
     BaseOptimization b;
 };
 static_assert(sizeof(FailedBaseOptimization) == 2);
-
 ```
 
 Another interesting thing is empty base optimization fails if the first non static member (whom address it overlaps) is the same type, or has a base which is the same type as that member.
 
 ```
-
 struct CorrectBaseOptimization : Empty {
     std::byte b;
     Empty e;
@@ -765,14 +762,12 @@ struct IncorrectBaseOptimization : Empty {
     std::byte b;
 };
 static_assert(sizeof(IncorrectBaseOptimization) == 3);
-
 ```
 
 A C++ 20 addition is the attribute [[no_unique_address]] which loosens the guarantee for a classes member to have a unique memory address.
 This would allow something similar to empty base optimization, but for empty members.
 
 ```
-
 struct MemberOptimization {
     std::byte c;
     // no unique address allows the compiler to not give e an unique memory address since it has no members
@@ -781,7 +776,6 @@ struct MemberOptimization {
 static_assert(sizeof(MemberOptimization) == 1);
 // offsetof gets the offset of a member from the start of the object.
 static_assert(offsetof(MemberOptimization, e) == offsetof(MemberOptimization, e));
-
 ```
 
 This allows the cutting of one byte from this struct which is good since it doesn't really need a unique address.
