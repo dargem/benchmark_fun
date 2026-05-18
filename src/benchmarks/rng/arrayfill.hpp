@@ -1,3 +1,4 @@
+#include <random>
 #include <string>
 
 #include "src/benchmarks/benchable.hpp"
@@ -6,7 +7,33 @@
 namespace benchmarks {
 
 template <size_t N>
-class Xoroshiro64BufferedArrayFill : Benchable {
+class MersenneTwisterArrayFill : public Benchable {
+   public:
+    MersenneTwisterArrayFill() : Benchable("Mersenne twister RNG"), randomNumberGenerator(rd()) {};
+
+    void runBenchmark(size_t iterations) override {
+        for (size_t i{}; i < iterations; ++i) {
+            for (uint32_t& e : arr) {
+                e = unif_dist(randomNumberGenerator);
+            }
+            asm volatile("" ::"r"(arr.data()) : "memory");
+        }
+    }
+
+    // reseed it with another hardware generated random number
+    void resetBenchmark() override { randomNumberGenerator.seed(rd()); }
+
+   private:
+    // get a random seed from the hardware
+    std::random_device rd;
+    // instantiate a mersenne twister with a distribution fit
+    std::mt19937 randomNumberGenerator;
+    std::uniform_int_distribution<uint32_t> unif_dist{};
+    std::array<uint32_t, N> arr{};
+};
+
+template <size_t N>
+class Xoroshiro64BufferedArrayFill : public Benchable {
    public:
     Xoroshiro64BufferedArrayFill() : Benchable("Buffered Xoroshiro64 RNG") { arr.fill(0); }
 
@@ -28,7 +55,7 @@ class Xoroshiro64BufferedArrayFill : Benchable {
 };
 
 template <size_t N>
-class Xoroshiro64SIMDArrayFill : Benchable {
+class Xoroshiro64SIMDArrayFill : public Benchable {
    public:
     Xoroshiro64SIMDArrayFill() : Benchable("SIMD Xoroshiro64 RNG") { arr.fill(0); }
 

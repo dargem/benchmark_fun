@@ -9,6 +9,7 @@
 #include "src/benchmarks/branch_prediction/branch_prediction_sorted.hpp"
 #include "src/benchmarks/branch_prediction/branch_prediction_unsorted.hpp"
 #include "src/benchmarks/execution_policies/policies.hpp"
+#include "src/benchmarks/rng/arrayfill.hpp"
 #include "src/benchmarks/rng/mersenne_twister.hpp"
 #include "src/benchmarks/rng/xoroshiro128+.hpp"
 #include "src/benchmarks/vector_access/vectors.hpp"
@@ -24,6 +25,7 @@ using benchmarks::BranchPredictionSorted;
 using benchmarks::BranchPredictionUnsorted;
 using benchmarks::ExecutionPolicies;
 using benchmarks::MersenneTwister;
+using benchmarks::MersenneTwisterArrayFill;
 using benchmarks::Policy;
 using benchmarks::ReservationSize;
 using benchmarks::SOA;
@@ -31,6 +33,8 @@ using benchmarks::StringRunner;
 using benchmarks::VectorAccess;
 using benchmarks::VectorWrapper;
 using benchmarks::Xoroshiro128plus;
+using benchmarks::Xoroshiro64BufferedArrayFill;
+using benchmarks::Xoroshiro64SIMDArrayFill;
 using stats::sameGroupMeans;
 
 void runRNGBenchmark() {
@@ -179,9 +183,21 @@ void runArrayWriteBenchmark() {
                              access32, access55, access56, access57, access58, access59, access63);
 }
 
+void arrayFill() {
+    constexpr static size_t ITERATIONS{100};
+    constexpr static size_t ARRAY_SIZE{20000};
+    constexpr static size_t SAMPLES{50};
+
+    auto mersenne = MersenneTwisterArrayFill<ARRAY_SIZE>();
+    auto bufferedXORO = Xoroshiro64BufferedArrayFill<ARRAY_SIZE>();
+    auto simdXORO = Xoroshiro64SIMDArrayFill<ARRAY_SIZE>();
+
+    benchmarks::executeBench(ITERATIONS, SAMPLES, mersenne, bufferedXORO, simdXORO);
+}
+
 int main() {
     try {
-        runRNGBenchmark();
+        // runRNGBenchmark();
         // runBranchPredictionBenchmark();
         // runVectorRandomAccessBenchmark();
         // testSOA_AOS_Iteration();
@@ -190,6 +206,7 @@ int main() {
         // runReservedVectorBenchmark();
         // runStringOptimsationBenchmark();
         // runArrayWriteBenchmark();
+        arrayFill();
     } catch (const std::exception& e) {
         std::cout << "Error: " << e.what() << std::endl;
     } catch (...) {
