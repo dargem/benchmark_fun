@@ -161,7 +161,7 @@ void runArrayWriteBenchmark() {
     constexpr static size_t ITERATIONS{500000};
     constexpr static size_t SAMPLES{500};
 
-    // We are writing 8 byte numbers at this index
+    // We are writing 8 bytes at this index
     auto access0 = ArrayWrite<0>();    // aligned
     auto access7 = ArrayWrite<7>();    // unaligned
     auto access8 = ArrayWrite<8>();    // aligned

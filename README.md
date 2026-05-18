@@ -448,7 +448,7 @@ Sample standard deviation: 498167
 Tests used: 300
 ```
 
-# LIKELY / UNLIKELY Attributes
+# LIKELY / UNLIKELY Attributes and a Branch Prediction tangent
 
 C++ 20 introduces the [[likely]] and [[unlikely]] attributes which are "hints" to inform the compiler if a path of execution is more or less likely than another.
 
@@ -586,15 +586,109 @@ Doing this with a 70% chance for the first condition, short circuiting happens l
 We see branch prediction costs have dominated the short circuiting benefit with the branchless version being fastest by a ~2.36x factor compared to 2nd place (likely).
 Furthermore the unlikely version is only ~1.26x slower rather than 2.22x slower as the short circuiting benefits have dropped off and branch misprediction costs start to dominate in time used.
 
-# Reorganizing a struct for less memory usage
+# Costs and dangers of unaligned access
 
-On a hardware level, data is physically divided into cache lines which are typically 64 byes long. When the CPU fetches memory from RAM it fetches that memory by the whole cache line, the cache line is the smallest unit of data transferrable between RAM and CPU cache. This is good because there is a spacial locality to data access, meaning getting some nearby data with what you want can help minimize future cache misses. Too large of a cache line though and you pick up more irrelevant data which could displace actually useful stuff from the cpu's cache so there's a balance. If you had an 8 byte piece of data, but it started at the end of one cache line and ended in the other when accessing it you would need both cache lines. This is called an unaligned access, in the worst case old CPU's don't support unaligned memory access and can crash, modernly this just has a speed penalty as the processor needs to read/write from two different cache lines and increases memory access latency. An additional thing is the whole cache line is mapped to a single page, not spanning across two. There is no guarantee that data will exist on one page if this piece of data is split across cache line boundaries though this would be fairly unlucky it could be pretty costly. On modern CPU's the effect of unaligned access is significantly less impactful.
-<br>
-
-A way to get around this is through aligning data. For example a cache line is typically 64 bytes, though some chips implement different size cache lines but they are all of 2^n in size. If you wanted to find if a memory address was "safe" to place 4 bytes of data without it crossing cache lines, you could check if that address was divisible by 4. [0:63] wouldn't allow data to start at 61-63 as some bytes would cross a cache line. 60 which is divisible by 4 would be safe as it would take up [60, 61, 62, 63]. On 64 bit linux systems a long double is typically on 10 bytes of size. A 4 byte alignment obviously wouldn't work since starting at address 60 would lead to it overflowing, and a 10 byte alignment would also mark 60 as fine for it to start which it isn't. Rather you need the smallest factor of 64 which is as large as your piece of data for proper alignment. A good property of c = 2^n, is its factors are 2^x for 0 <= int x <= n. So a 10 byte long double would be wasting 6 bytes of space as it needs to be properly 16 byte aligned.
+On a hardware level, data is physically divided into cache lines which are typically 64 byes long.
+When the CPU fetches memory from RAM it fetches that memory by the whole cache line, the cache line is the smallest unit of data transferrable between RAM and CPU cache.
+This is good because there is a spacial locality to data access, meaning getting some nearby data with what you want can help minimize future cache misses.
+Too large of a cache line though and you pick up more irrelevant data which could displace actually useful stuff from the cpu's cache so there's a balance.
+If you had an 8 byte piece of data, but it started at the end of one cache line and ended in the other when accessing it you would need to fetch both cache lines.
+Additionally consider when loading the data into the register it would require manipulation of both cache lines.
+Writing the data back would also need some messy bit manipulation to put say n starting bytes on the end of cache line A and the rest of the bytes on start of cache line B.
+This obviously has performance impacts and is an example of unaligned access.
+In the worst case a lot of older architectures don't support unaligned memory access which results in crashes, modernly though the issue is potential performance penalities.
+An additional thing is the whole cache line is mapped to a single page, not spanning across two.
+There is no guarantee that data will exist on one page if this piece of data is split across cache line boundaries though this would be fairly unlucky it could be pretty costly.
+On older CPU's unaligned data access where data doesn't cross cache line boundaries (ie a uint64_t which starts not on a multiple of 8 but doesn't cross a multiple of 64) required additional operations apparently but on modern CPU's this isn't the case.
+So for modern CPU's the effect of unaligned access I would expect to only be observable when crossing cache line boundaries which is what this benchmark is.
+This benchmark measures time taken for a large number of uint64_t writes at a given byte offset to an array.
+The array is 64 byte aligned so a byte offset will correspond 1:1 to a cache line offset.
 
 ```
+---Summary statistics for aligned array write, byte offset 0---
+Sample mean cycles per test: 194159
+Confidence interval: 188010-200307
+Sample standard deviation: 69974.8
+Tests used: 500
+---Summary statistics for unaligned array write, byte offset 7---
+Sample mean cycles per test: 194014 // unaligned access but same speed as expected since it doesn't cross a cacheline boundary
+Confidence interval: 187466-200563
+Sample standard deviation: 74527.6
+Tests used: 500
+---Summary statistics for aligned array write, byte offset 8---
+Sample mean cycles per test: 199984
+Confidence interval: 189751-210216
+Sample standard deviation: 116454
+Tests used: 500
+---Summary statistics for unaligned array write, byte offset 13---
+Sample mean cycles per test: 196464 // there's some variations but can see the confidence intervals basically overlap
+Confidence interval: 188339-204590
+Sample standard deviation: 92481.5
+Tests used: 500
+---Summary statistics for aligned array write, byte offset 16---
+Sample mean cycles per test: 197986
+Confidence interval: 189263-206709
+Sample standard deviation: 99273.9
+Tests used: 500
+---Summary statistics for aligned array write, byte offset 32---
+Sample mean cycles per test: 197281 // can see accesses so far time taken has no relation with byte offset
+Confidence interval: 188969-205593
+Sample standard deviation: 94598.2
+Tests used: 500
+---Summary statistics for unaligned array write, byte offset 55---
+Sample mean cycles per test: 194436
+Confidence interval: 188184-200689
+Sample standard deviation: 71160.4
+Tests used: 500
+---Summary statistics for aligned array write, byte offset 56---
+Sample mean cycles per test: 192714
+Confidence interval: 190027-195401
+Sample standard deviation: 30583.8
+Tests used: 500
+---Summary statistics for unaligned and crossing cacheline boundaries array write, byte offset 57---
+Sample mean cycles per test: 762896
+Confidence interval: 759341-766451 // and all of a sudden performance tanks where its crossing cacheline boundaries
+Sample standard deviation: 40454.4
+Tests used: 500
+---Summary statistics for unaligned and crossing cacheline boundaries array write, byte offset 58---
+Sample mean cycles per test: 763787
+Confidence interval: 758914-768660
+Sample standard deviation: 55457.4
+Tests used: 500
+---Summary statistics for unaligned and crossing cacheline boundaries array write, byte offset 59---
+Sample mean cycles per test: 768911
+Confidence interval: 755482-782340
+Sample standard deviation: 152838
+Tests used: 500
+---Summary statistics for unaligned and crossing cacheline boundaries array write, byte offset 63---
+Sample mean cycles per test: 784827 // tanks for all of them the same amount
+Confidence interval: 756972-812683
+Sample standard deviation: 317024
+Tests used: 500
+```
 
+Very clear benchmark, crossing cache line boundaries leads to an awful ~3.95x longer time taken to perform the write.
+For unaligned access which doesn't cross cache line boundaries there's no performance impacts (at least on my modern CPU).
+Unaligned access is also undefined behaviour in C++ so do try to avoid this.
+To avoid unaligned accesses, the compiler gets around this by aligning your data through creating padding.
+That way accessing the data will be aligned as the data itself is aligned.
+
+# Padding to avoid unaligned access, and reorganizing a struct for less memory usage
+
+To align data the way I think of it is we need to find memory addresses it can start at that don't cross cache lines.
+A cache line is typically 64 bytes, though some chips implement different size cache lines but they are all of 2^n in size.
+If you wanted to find if a memory address was "safe" to place 4 bytes of data without it crossing cache lines, you could check if that address was divisible by 4.
+[0:63] wouldn't allow data to start at 61-63 as some bytes would cross a cache line.
+60 which is divisible by 4 would be safe as it would take up [60, 61, 62, 63].
+On 64 bit linux systems a long double is typically on 10 bytes of size.
+A 4 byte alignment obviously wouldn't work since starting at address 60 would lead to it overflowing.
+A 10 byte alignment would also mark 60 as fine for it to start which it isn't.
+Rather you need the smallest factor of 64 which is as large as your piece of data for proper alignment.
+A good property of c = 2^n, is its factors are 2^x for 0 <= int x <= n.
+So a 10 byte long double would be "wasting" 6 bytes of space as it needs to be properly 16 byte aligned.
+This is actually the case on linux.
+
+```
 struct IntDoubleInt {
     int int_val_1; // needs to be 4 byte aligned [0:3]
     double double_val; // needs to be 8 byte aligned [8:15]
@@ -608,20 +702,17 @@ struct IntIntDouble {
     double double_val; // needs to be 8 byte aligned [8:15]
 }; // struct has the alignment of its largest elements alignment which is 8 bytes here. So [0:15]
 // works out with no end padding as thats a multiple of 8.
-
 ```
 
 This is an example in practice, when creating a struct / class the standard guarantees that the order you define members in is the same order they are laid out in memory. For the IntDoubleInt the struct itself is 8 byte aligned because the struct has the alignment of the largest alignment of its members. This means the struct is starting at an address which is a multiple of 8. We then add an int, a multiple of 8 is a multiple of 4 so no padding needs to be considered here. But now the next address is a 4 offset from a multiple of 8, so to add a double we insert padding which is just empty space. We can then insert the 4 byte int. This has used up 4 bytes from the first int, 4 from padding, then another 8 from the float, 4 from the int which adds up to 20 bytes. But the data needs to take up the whole alignments worth of space so it adds 4 bytes of padding at the end to keep the struct aligned. This results in it taking 24 bytes total. In the IntIntDouble case there is no alignment issues though so its only taking up 16 bytes, this is 1/3 less space used from good ordering of members. Because the standard guarantees order you define members in is the same order they are laid out in memory the compiler is not free to reorder them, its completely up to the programmer.
 
 ```
-
 static_assert(sizeof(IntIntDouble) == 16);
 static_assert(sizeof(IntIntDouble) == (sizeof(int) + sizeof(int) + sizeof(double)));
 
 static_assert(sizeof(IntDoubleInt) != 16);
 static_assert(sizeof(IntDoubleInt) != (sizeof(int) + sizeof(int) + sizeof(double)));
 static_assert(sizeof(IntDoubleInt) == 24);
-
 ```
 
 Because of that these static asserts pass.
