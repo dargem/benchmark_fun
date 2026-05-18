@@ -18,8 +18,7 @@ template <Attribute A>
 class AttributeOptimisation : public Benchable {
    public:
     AttributeOptimisation(size_t listSize) :
-            Benchable(BenchType::ATTRIBUTE_BRANCH_PREDICTION,
-                      std::format("Compiler Branch Prediction with attribute {}", ATTRIBUTE_NAME)),
+            Benchable(std::format("Compiler Branch Prediction with attribute {}", ATTRIBUTE_NAME)),
             listSize{listSize} {
         resetBenchmark();
     }

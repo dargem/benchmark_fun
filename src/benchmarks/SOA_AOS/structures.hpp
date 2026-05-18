@@ -6,7 +6,6 @@
 #include <string>
 #include <vector>
 
-#include "src/benchmarks/bench_types.hpp"
 #include "src/benchmarks/benchable.hpp"
 #include "utils/concepts.hpp"
 
@@ -28,8 +27,7 @@ class AOS : public Benchable {
 
    public:
     AOS(size_t numEntities) :
-            Benchable(BenchType::STRUCTURE_LAYOUT,
-                      std::format("Array of Structures Iteration over {}", typeName)),
+            Benchable(std::format("Array of Structures Iteration over {}", typeName)),
             entities(numEntities, Entity{}) {}
 
     void runBenchmark(size_t iterations) override {
@@ -73,8 +71,7 @@ template <Numeric T>
 class SOA : public Benchable {
    public:
     SOA(size_t numEntities) :
-            Benchable(BenchType::STRUCTURE_LAYOUT,
-                      std::format("Structure of Arrays iteration over {}", typeName)),
+            Benchable(std::format("Structure of Arrays iteration over {}", typeName)),
             attacks(numEntities, 1),
             defenses(numEntities, 1),
             healths(numEntities, 1),

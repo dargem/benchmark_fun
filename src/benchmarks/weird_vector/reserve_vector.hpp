@@ -1,6 +1,7 @@
 #include <cstddef>
+#include <cstdint>
+#include <vector>
 
-#include "benchmarks/bench_types.hpp"
 #include "benchmarks/benchable.hpp"
 
 namespace benchmarks {
@@ -33,7 +34,7 @@ template <ReservationSize S>
 struct VectorWrapper : Benchable {
     std::vector<CounterElement<S>> numbers;
 
-    VectorWrapper() : Benchable(BenchType::VECTOR_RESERVATION, std::string(NAME)) {
+    VectorWrapper() : Benchable(std::string(NAME)) {
         numbers.reserve(static_cast<uint64_t>(S) / sizeof(CounterElement<S>));
     }
 

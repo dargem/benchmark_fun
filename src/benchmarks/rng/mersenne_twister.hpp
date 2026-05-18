@@ -3,16 +3,13 @@
 #include <iostream>
 #include <random>
 
-#include "src/benchmarks/bench_types.hpp"
 #include "src/benchmarks/benchable.hpp"
 
 namespace benchmarks {
 
 class MersenneTwister : public Benchable {
    public:
-    MersenneTwister() :
-            Benchable(BenchType::RANDOM_NUMBER_GENERATION, "Mersenne twister RNG"),
-            randomNumberGenerator(rd()) {};
+    MersenneTwister() : Benchable("Mersenne twister RNG"), randomNumberGenerator(rd()) {};
 
     void runBenchmark(size_t iterations) override {
         for (size_t i{}; i < iterations; ++i) {

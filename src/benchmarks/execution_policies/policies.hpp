@@ -7,13 +7,12 @@
 #include <string>
 #include <vector>
 
-#include "benchmarks/bench_types.hpp"
 #include "benchmarks/benchable.hpp"
 
 namespace benchmarks {
 
 enum class Policy {
-    INDEXED_LOOP,         // Just use a generic indexed loop 
+    INDEXED_LOOP,         // Just use a generic indexed loop
     SEQUENCED,            // Iterates in sequence
     UNSEQUENCED,          // Allows unsequenced iteration (can do vectorization/simd)
     PARALLEL,             // Allows parallel iteration (compiler can choose to do multithreading)
@@ -25,8 +24,7 @@ template <Policy P>
 class ExecutionPolicies : public Benchable {
    public:
     ExecutionPolicies(size_t coordinateSize) :
-            Benchable(BenchType::EXECUTION_POLICY,
-                      std::format("{} Execution Policy Benchmark", TYPE)),
+            Benchable(std::format("{} Execution Policy Benchmark", TYPE)),
             x_pos(coordinateSize, float{}),
             y_pos(coordinateSize, float{}),
             z_pos(coordinateSize, float{}) {
@@ -76,9 +74,15 @@ class ExecutionPolicies : public Benchable {
 
         for (size_t i{}; i < iterations; ++i) {
             if constexpr (P == Policy::INDEXED_LOOP) {
-                for (size_t i{}; i < x_pos.size(); ++i) { heavyTransform(x_pos[i], x_transform); }
-                for (size_t i{}; i < y_pos.size(); ++i) { heavyTransform(y_pos[i], y_transform); }
-                for (size_t i{}; i < z_pos.size(); ++i) { heavyTransform(z_pos[i], z_transform); }
+                for (size_t i{}; i < x_pos.size(); ++i) {
+                    heavyTransform(x_pos[i], x_transform);
+                }
+                for (size_t i{}; i < y_pos.size(); ++i) {
+                    heavyTransform(y_pos[i], y_transform);
+                }
+                for (size_t i{}; i < z_pos.size(); ++i) {
+                    heavyTransform(z_pos[i], z_transform);
+                }
             } else if constexpr (P == Policy::SEQUENCED) {
                 applyForEach(std::execution::seq, x_pos, x_transform);
                 applyForEach(std::execution::seq, y_pos, y_transform);

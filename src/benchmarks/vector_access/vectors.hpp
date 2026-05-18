@@ -3,7 +3,6 @@
 #include <string_view>
 #include <vector>
 
-#include "benchmarks/bench_types.hpp"
 #include "benchmarks/benchable.hpp"
 
 namespace benchmarks {
@@ -14,7 +13,7 @@ template <typename T>
 class VectorAccess : public Benchable {
    public:
     VectorAccess(size_t numElements, size_t numIndices) :
-            Benchable(benchType, std::string(name)),
+            Benchable(std::string(name)),
             rng(10000),
             elements(numElements, T{}),
             indices(numIndices) {
@@ -52,8 +51,6 @@ class VectorAccess : public Benchable {
     std::vector<T> elements;
     std::vector<size_t> indices;
     volatile T sink{};  // prevent dead code elimination
-
-    constexpr static BenchType benchType{BenchType::VECTOR_BOOL_CHAR_RANDOM_ACCESS};
     static constexpr std::string_view name = []() {
         if constexpr (std::same_as<T, bool>)
             return "bool vector random access";

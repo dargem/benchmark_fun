@@ -3,6 +3,7 @@
 
 #include "src/benchmarks/SOA_AOS/structures.hpp"
 #include "src/benchmarks/SSO/small_string_optimisation.hpp"
+#include "src/benchmarks/alignment/alignment.hpp"
 #include "src/benchmarks/attributes/likely_attributes.hpp"
 #include "src/benchmarks/bench_runner.hpp"
 #include "src/benchmarks/branch_prediction/branch_prediction_sorted.hpp"
@@ -13,11 +14,10 @@
 #include "src/benchmarks/vector_access/vectors.hpp"
 #include "src/benchmarks/weird_vector/reserve_vector.hpp"
 #include "src/stats/anovas.hpp"
-#include "src/stats/student_T_tests.hpp"
-#include "src/timer.hpp"
 #include "src/utils/arena.hpp"
 
 using benchmarks::AOS;
+using benchmarks::ArrayWrite;
 using benchmarks::Attribute;
 using benchmarks::AttributeOptimisation;
 using benchmarks::BranchPredictionSorted;
@@ -157,6 +157,28 @@ void runStringOptimsationBenchmark() {
     benchmarks::executeBench(ITERATIONS, SAMPLES, string15, string16, string17, string18);
 }
 
+void runArrayWriteBenchmark() {
+    constexpr static size_t ITERATIONS{500000};
+    constexpr static size_t SAMPLES{500};
+
+    // We are writing 8 byte numbers at this index
+    auto access0 = ArrayWrite<0>();    // aligned
+    auto access7 = ArrayWrite<7>();    // unaligned
+    auto access8 = ArrayWrite<8>();    // aligned
+    auto access13 = ArrayWrite<13>();  // unaligned
+    auto access16 = ArrayWrite<16>();  // aligned
+    auto access32 = ArrayWrite<32>();  // aligned
+    auto access55 = ArrayWrite<55>();  // unaligned
+    auto access56 = ArrayWrite<56>();  // aligned
+    auto access57 = ArrayWrite<57>();  // unaligned and crossing page boundary
+    auto access58 = ArrayWrite<58>();  // unaligned and crossing page boundary
+    auto access59 = ArrayWrite<59>();  // unaligned and crossing page boundary
+    auto access63 = ArrayWrite<63>();  // unaligned and crossing page boundary
+
+    benchmarks::executeBench(ITERATIONS, SAMPLES, access0, access7, access8, access13, access16,
+                             access32, access55, access56, access57, access58, access59, access63);
+}
+
 int main() {
     try {
         // runRNGBenchmark();
@@ -167,6 +189,7 @@ int main() {
         // runExecutionPolicyBenchmark();
         // runReservedVectorBenchmark();
         // runStringOptimsationBenchmark();
+        runArrayWriteBenchmark();
     } catch (const std::exception& e) {
         std::cout << "Error: " << e.what() << std::endl;
     } catch (...) {

@@ -6,7 +6,6 @@
 #include <string_view>
 #include <vector>
 
-#include "src/benchmarks/bench_types.hpp"
 #include "src/benchmarks/benchable.hpp"
 
 namespace benchmarks {
@@ -14,12 +13,11 @@ namespace benchmarks {
 class BranchPredictionUnsorted : public Benchable {
    public:
     BranchPredictionUnsorted(size_t listSize, std::string name) :
-            Benchable(BenchType::BRANCH_PREDICTION, std::string(name)), listSize{listSize} {
+            Benchable(std::string(name)), listSize{listSize} {
         resetBenchmark();
     }
 
-    BranchPredictionUnsorted(size_t listSize) :
-            Benchable(BenchType::BRANCH_PREDICTION, std::string(NAME)), listSize{listSize} {
+    BranchPredictionUnsorted(size_t listSize) : Benchable(std::string(NAME)), listSize{listSize} {
         resetBenchmark();
     }
 

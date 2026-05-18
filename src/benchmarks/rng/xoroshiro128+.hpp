@@ -7,7 +7,6 @@
 #include <random>
 #include <string_view>
 
-#include "src/benchmarks/bench_types.hpp"
 #include "src/benchmarks/benchable.hpp"
 
 namespace benchmarks {
@@ -17,8 +16,7 @@ namespace benchmarks {
 class Xoroshiro128plus : public Benchable {
    public:
     // creates and seeds a generator
-    explicit Xoroshiro128plus(size_t seed) :
-            Benchable(BenchType::RANDOM_NUMBER_GENERATION, std::string(NAME)) {
+    explicit Xoroshiro128plus(size_t seed) : Benchable(std::string(NAME)) {
         // splitmix64 modifies the seed so this is deterministic with 2 different modified numbers
         state[0] = splitmix64(seed);
         state[1] = splitmix64(seed);
