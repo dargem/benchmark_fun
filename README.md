@@ -430,21 +430,23 @@ Tests used: 1000
 
 # XOROSHIRO 128+ vs Inbuilt Mersenne Twister
 
-Considerably better results from the xoroshiro 128++ rng and the inbuilt mersenne twister rng.
-Was expecting xoroshiro128+ to be substantially faster and it is, ~3.17x faster number generation is very welcome.
+Mersenne Twister is often considered the standard RNG to go to but its quite slow.
+Xoroshiro128+ is a RNG that is considered considerably faster with better statistical qualities.
+Both were benchmarked for generating random integers.
+Was expecting xoroshiro128+ to be substantially faster and it is, ~3.95x faster number generation is very welcome.
 Xoroshiro also has better statistical properties.
 
 ```
 ---Summary statistics for Xoroshiro128+ RNG---
-Sample mean cycles per test: 2.52777e+06
-Confidence interval: 2.5216e+06-2.53394e+06
-Sample standard deviation: 54302.4
+Sample mean cycles per test: 2.41944e+06
+Confidence interval: 2.4054e+06-2.43349e+06
+Sample standard deviation: 123615
 Tests used: 300
 
 ---Summary statistics for Mersenne twister RNG---
-Sample mean cycles per test: 7.98123e+06
-Confidence interval: 7.92463e+06-8.03783e+06
-Sample standard deviation: 498167
+Sample mean cycles per test: 9.55954e+06
+Confidence interval: 9.48389e+06-9.63519e+06
+Sample standard deviation: 665787
 Tests used: 300
 ```
 
@@ -795,7 +797,3 @@ GCC and CLANG will generally follow it, but MSVC always ignores it due to it bre
 - simd/vectorisation falls into SOA kinda
 - false sharing messing with concurrency
 - maybe LTO
-
-```
-
-```

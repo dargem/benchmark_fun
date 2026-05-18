@@ -181,7 +181,7 @@ void runArrayWriteBenchmark() {
 
 int main() {
     try {
-        // runRNGBenchmark();
+        runRNGBenchmark();
         // runBranchPredictionBenchmark();
         // runVectorRandomAccessBenchmark();
         // testSOA_AOS_Iteration();
@@ -189,7 +189,7 @@ int main() {
         // runExecutionPolicyBenchmark();
         // runReservedVectorBenchmark();
         // runStringOptimsationBenchmark();
-        runArrayWriteBenchmark();
+        // runArrayWriteBenchmark();
     } catch (const std::exception& e) {
         std::cout << "Error: " << e.what() << std::endl;
     } catch (...) {

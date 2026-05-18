@@ -25,7 +25,7 @@ class MersenneTwister : public Benchable {
     std::random_device rd;
     // instantiate a mersenne twister with a distribution fit
     std::mt19937 randomNumberGenerator;
-    std::uniform_real_distribution<double> unif_dist{};
+    std::uniform_int_distribution<uint32_t> unif_dist{};
     volatile double sink{};
 
     // make a mersenne twister RNG with a distribution for it
