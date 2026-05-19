@@ -33,6 +33,7 @@ using benchmarks::StringRunner;
 using benchmarks::VectorAccess;
 using benchmarks::VectorWrapper;
 using benchmarks::Xoroshiro128plus;
+using benchmarks::Xoroshiro64ArrayFill;
 using benchmarks::Xoroshiro64BufferedArrayFill;
 using benchmarks::Xoroshiro64SIMDArrayFill;
 using stats::sameGroupMeans;
@@ -185,14 +186,15 @@ void runArrayWriteBenchmark() {
 
 void arrayFill() {
     constexpr static size_t ITERATIONS{100};
-    constexpr static size_t ARRAY_SIZE{20000};
+    constexpr static size_t ARRAY_SIZE{100000};
     constexpr static size_t SAMPLES{50};
 
     auto mersenne = MersenneTwisterArrayFill<ARRAY_SIZE>();
+    auto scalarXORO = Xoroshiro64ArrayFill<ARRAY_SIZE>();
     auto bufferedXORO = Xoroshiro64BufferedArrayFill<ARRAY_SIZE>();
     auto simdXORO = Xoroshiro64SIMDArrayFill<ARRAY_SIZE>();
 
-    benchmarks::executeBench(ITERATIONS, SAMPLES, mersenne, bufferedXORO, simdXORO);
+    benchmarks::executeBench(ITERATIONS, SAMPLES, mersenne, scalarXORO, bufferedXORO, simdXORO);
 }
 
 int main() {
