@@ -428,7 +428,7 @@ Tests used: 1000
 
 ```
 
-# XOROSHIRO 128+ vs Inbuilt Mersenne Twister
+# Mersenne Twister vs Xoroshiro family RNGs (and a SIMD accelerated one)
 
 Mersenne Twister is often considered the standard RNG to go to but its quite slow.
 Xoroshiro128+ is a RNG that is considered considerably faster with better statistical qualities.
@@ -450,12 +450,47 @@ Sample standard deviation: 665787
 Tests used: 300
 ```
 
+I recently made a small library for 4 byte number generation (floats and uint32_t).
+My implementation is a SIMD accelerated version of Xoroshiro64*,
+it works by having multiple Xoroshiro64* lanes advancing in parallel.
+This lets me have every lane advance simultaneously to create 16 random numbers at once.
+I also have a second buffered version which has a buffer it refills using the batch api.
+Its api is just a standard scalar get_next() so there's branching at the cost of less ops.
+This benchmark is filling arrays with random 4 bit integers.
+
+```
+---Summary statistics for Mersenne twister RNG---
+Sample mean cycles per test: 4.82333e+07
+Confidence interval: 4.78512e+07-4.86153e+07
+Sample standard deviation: 1.34424e+06
+Tests used: 50
+
+---Summary statistics for Xoroshiro64 RNG---
+Sample mean cycles per test: 2.41813e+07
+Confidence interval: 2.39376e+07-2.4425e+07
+Sample standard deviation: 857640
+Tests used: 50
+
+---Summary statistics for Buffered Xoroshiro64 RNG---
+Sample mean cycles per test: 1.84738e+07
+Confidence interval: 1.81777e+07-1.87698e+07
+Sample standard deviation: 1.04157e+06
+Tests used: 50
+
+---Summary statistics for SIMD Xoroshiro64 RNG---
+Sample mean cycles per test: 3.74071e+06
+Confidence interval: 3.71803e+06-3.7634e+06
+Sample standard deviation: 79825.9
+Tests used: 50
+```
+
+My simd accelerated version gets an incredible ~6.5x speedups over the standard xoroshiro64\* impl. The buffered version is ~1.3x faster which is still solid enough, shows the benefit of batching where possible.
+
 # LIKELY / UNLIKELY Attributes and a Branch Prediction tangent
 
 C++ 20 introduces the [[likely]] and [[unlikely]] attributes which are "hints" to inform the compiler if a path of execution is more or less likely than another.
 
 ```
-
 if constexpr (A == Attribute::UNLIKELY) {
     if (number > SIZE_NEEDED_FOR_SUCCESS) [[unlikely]] { // lie 95% is unlikely
         successes += 1;
@@ -463,7 +498,6 @@ if constexpr (A == Attribute::UNLIKELY) {
         equalities += 1;
     }
 }
-
 ```
 
 This benchmarks 3 scenarios like above, the randomly generated number has a ~95% chance to be > size_needed_for_success.

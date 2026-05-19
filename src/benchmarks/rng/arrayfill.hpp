@@ -40,8 +40,8 @@ class MersenneTwisterArrayFill : public Benchable {
             for (size_t j{}; j < N; ++j) {
                 arr[j] = unif_dist(randomNumberGenerator);
             }
+            asm volatile("" ::"r"(arr.data()) : "memory");
         }
-        asm volatile("" ::"r"(arr.data()) : "memory");
     }
 
     // reseed it with another hardware generated random number
@@ -67,8 +67,8 @@ class Xoroshiro64ArrayFill : public Benchable {
             for (size_t j{}; j < N; ++j) {
                 arr[j] = rng.next_u32();
             }
+            asm volatile("" ::"r"(arr.data()) : "memory");
         }
-        asm volatile("" ::"r"(arr.data()) : "memory");
     }
 
     void resetBenchmark() override {}
@@ -90,8 +90,8 @@ class Xoroshiro64BufferedArrayFill : public Benchable {
             for (size_t j{}; j < N; ++j) {
                 arr[j] = rng.get_uint32();
             }
+            asm volatile("" ::"r"(arr.data()) : "memory");
         }
-        asm volatile("" ::"r"(arr.data()) : "memory");
     }
 
     void resetBenchmark() override {}
