@@ -31,8 +31,6 @@ class StandardBinarySearch : public Benchable {
         for (size_t i{}; i < iterations; ++i) {
             for (uint32_t e : search) {
                 sink = standardFind(e);
-                std::cout << e << '\n';
-                std::cout << *(standardFind(e)) << '\n';
             }
         }
     }
