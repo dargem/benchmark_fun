@@ -825,3 +825,6 @@ GCC and CLANG will generally follow it, but MSVC always ignores it due to it bre
 - simd/vectorisation falls into SOA kinda
 - false sharing messing with concurrency
 - maybe LTO
+- different dynamic dispatch methods
+- different binary search memory layouts
+- simd binary search
