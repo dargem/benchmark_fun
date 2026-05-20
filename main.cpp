@@ -6,6 +6,7 @@
 #include "src/benchmarks/alignment/alignment.hpp"
 #include "src/benchmarks/attributes/likely_attributes.hpp"
 #include "src/benchmarks/bench_runner.hpp"
+#include "src/benchmarks/binary_search/binary_search.hpp"
 #include "src/benchmarks/branch_prediction/branch_prediction_sorted.hpp"
 #include "src/benchmarks/branch_prediction/branch_prediction_unsorted.hpp"
 #include "src/benchmarks/execution_policies/policies.hpp"
@@ -29,6 +30,7 @@ using benchmarks::MersenneTwisterArrayFill;
 using benchmarks::Policy;
 using benchmarks::ReservationSize;
 using benchmarks::SOA;
+using benchmarks::StandardBinarySearch;
 using benchmarks::StringRunner;
 using benchmarks::VectorAccess;
 using benchmarks::VectorWrapper;
@@ -197,6 +199,17 @@ void arrayFill() {
     benchmarks::executeBench(ITERATIONS, SAMPLES, mersenne, scalarXORO, bufferedXORO, simdXORO);
 }
 
+void binarySearchLayouts() {
+    constexpr static size_t ITERATIONS{1};
+    constexpr static size_t NUM_ELEMENTS{100000};
+    constexpr static size_t NUM_SEARCHED{1000};
+    constexpr static size_t SAMPLES{100};
+
+    auto standard = StandardBinarySearch<NUM_ELEMENTS, NUM_SEARCHED>();
+
+    benchmarks::executeBench(ITERATIONS, SAMPLES, standard);
+}
+
 int main() {
     try {
         // runRNGBenchmark();
@@ -208,7 +221,8 @@ int main() {
         // runReservedVectorBenchmark();
         // runStringOptimsationBenchmark();
         // runArrayWriteBenchmark();
-        arrayFill();
+        // arrayFill();
+        binarySearchLayouts();
     } catch (const std::exception& e) {
         std::cout << "Error: " << e.what() << std::endl;
     } catch (...) {

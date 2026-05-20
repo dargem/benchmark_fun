@@ -6,6 +6,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <iostream>
 #include <limits>
 #include <numeric>
 
@@ -15,11 +16,12 @@
 namespace benchmarks {
 
 template <size_t NUM_ELEMENTS, size_t NUM_SEARCHED>
-    requires(NUM_SEARCHED < NUM_ELEMENTS && NUM_ELEMENTS < 100000)
-class StandardBinarySearch : Benchable {
+    requires(NUM_SEARCHED < NUM_ELEMENTS && NUM_ELEMENTS <= 100000)
+class StandardBinarySearch : public Benchable {
    public:
     StandardBinarySearch() : Benchable("Standard binary search") {
         rng.fill_aligned_uint32(data.data(), NUM_ELEMENTS);
+        std::sort(data.begin(), data.end());
         refillSearch();
     }
 
@@ -29,16 +31,18 @@ class StandardBinarySearch : Benchable {
         for (size_t i{}; i < iterations; ++i) {
             for (uint32_t e : search) {
                 sink = standardFind(e);
+                std::cout << e << '\n';
+                std::cout << *(standardFind(e)) << '\n';
             }
         }
     }
 
-    void standardFind(uint32_t e) { return std::lower_bound(data.begin(), data.end(), e); }
+    uint32_t* standardFind(uint32_t e) { return std::lower_bound(data.begin(), data.end(), e); }
 
    private:
     volatile uint32_t* sink;
 
-    uint32_t* refillSearch() {
+    void refillSearch() {
         rng.fill_aligned_uint32(search.begin(), NUM_SEARCHED);
         std::for_each(search.begin(), search.end(), [&](uint32_t& e) {
             size_t idx = e % data.size();
