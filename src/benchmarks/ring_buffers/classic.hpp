@@ -1,12 +1,13 @@
 #pragma once
 
 #include <atomic>
+#include <new>
 #include <vector>
 
 struct RingBuffer {
     std::vector<int> data;
-    alignas(64) std::atomic<size_t> read_idx{0};
-    alignas(64) std::atomic<size_t> write_idx{0};
+    alignas(std::hardware_destructive_interference_size) std::atomic<size_t> read_idx{0};
+    alignas(std::hardware_destructive_interference_size) std::atomic<size_t> write_idx{0};
 
     // Zero initialise data
     RingBuffer(size_t capacity) : data(capacity, 0) {}
@@ -34,7 +35,7 @@ struct RingBuffer {
     bool pop(int& val) {
         auto const current_read_idx = read_idx.load(std::memory_order_relaxed);
         if (current_read_idx == write_idx.load(std::memory_order_acquire)) {
-            // We are writing to write_idx next so the queue is empty here
+            // We are reading to write_idx next so the queue is empty here
             return false;
         }
 
