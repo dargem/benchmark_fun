@@ -240,6 +240,8 @@ A parallel execution policy though has ~7.85x speedup which is quite nice.
 A parallel unsequenced execution policy though lead to further improvements, with it being ~9.2x faster.
 This is ~1.17x faster than the parallel execution policy which is great.
 
+# Ring buffer optimizations and minimizing coherencce traffic
+
 # SSO
 
 One of the key differences between std::string and a c style string made through a char array is a std::string is resizable.

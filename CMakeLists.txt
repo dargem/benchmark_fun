@@ -49,6 +49,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         -march=native
         -mtune=native
         -funroll-loops
+        -Wno-interference-size
     )
 
     target_link_options(benchmarks PRIVATE

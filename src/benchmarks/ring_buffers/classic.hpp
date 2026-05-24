@@ -2,11 +2,11 @@
 
 #include <atomic>
 #include <new>
-#include <string>
+#include <string_view>
 #include <vector>
 
 struct RingBuffer {
-    std::string name = "Classic ring buffer";
+    static constexpr std::string_view NAME = "Classic ring buffer";
 
     std::vector<int> data;
     alignas(std::hardware_destructive_interference_size) std::atomic<size_t> read_idx{0};

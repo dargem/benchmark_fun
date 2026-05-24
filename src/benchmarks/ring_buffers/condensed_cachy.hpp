@@ -2,9 +2,11 @@
 
 #include <atomic>
 #include <new>
+#include <string_view>
 #include <vector>
 
 struct CachingRingBufferCompressed {
+    static constexpr std::string_view NAME = "Condensed caching ring buffer";
     std::vector<int> data;
 
     // A mild modification to the data layout to save space. It think it will decrease performance
@@ -15,13 +17,7 @@ struct CachingRingBufferCompressed {
     // read_idx_cache which is on the same cacheline. This is the same cost in both cases. If the
     // writer just is reading the read cache then it being in a shared state doesn't matter. In the
     // case the read cache needs updating the writer will need to additionally take control of the
-    // write_data cache line. I expect this would be uncommon because it would require a) current it
-    // is halfway through a push when the readers cache runs out. In this same push the writers
-    // cache also runs out. Then it has to take control of the cacheline but it would need to take
-    // control in the next loop anyways since it writes to the cacheline to increment read_idx. So
-    // this would just be doing it ahead of time. So the reader would have to then read again before
-    // the pusher completes this same loop and take control back because its reader cache runs out.
-    // I theorize performance loss is minor as this case is fairly rare.
+    // write_data cache line though in the other case it would need to do so at the next loop.
     alignas(std::hardware_destructive_interference_size) struct {
         std::atomic<size_t> read_idx{0};
         size_t write_idx_cache{0};

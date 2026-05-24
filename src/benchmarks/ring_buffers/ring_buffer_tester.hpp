@@ -15,27 +15,27 @@ namespace benchmarks {
 template <typename Queue>
     requires requires(Queue q, int a) {  // Beautiful concepts syntax
         q.push(a);
-        q.pop();
-        { q.name } -> std::convertible_to<std::string>;
+        q.pop(a);
+        { Queue::NAME } -> std::convertible_to<std::string_view>;
     }
 class BufferTester : public Benchable {
    public:
     BufferTester(size_t queue_size) :
-            Benchable(std::format("{} benchmark", std::declval<Queue>().name)), q() {}
+            Benchable(std::format("{} benchmark", std::string(Queue::NAME))), q(queue_size) {}
 
     void runBenchmark(size_t iterations) override {
-        popper([&, iterations] {
+        popper = std::thread([&, iterations] {
             for (int i{}; i < iterations; ++i) {
                 int val;
                 // If pop fails keep on busy waiting until success
-                while (!q.pop());
+                while (!q.pop(val));
                 if (val != i) {
                     throw std::runtime_error("issue");
                 }
             }
         });
 
-        pusher([&, iterations] {
+        pusher = std::thread([&, iterations] {
             for (int i{}; i < iterations; ++i) {
                 // Keep on trying to push index busily
                 while (!q.push(i));

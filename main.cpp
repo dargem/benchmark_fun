@@ -10,6 +10,10 @@
 #include "src/benchmarks/branch_prediction/branch_prediction_sorted.hpp"
 #include "src/benchmarks/branch_prediction/branch_prediction_unsorted.hpp"
 #include "src/benchmarks/execution_policies/policies.hpp"
+#include "src/benchmarks/ring_buffers/cachy.hpp"
+#include "src/benchmarks/ring_buffers/classic.hpp"
+#include "src/benchmarks/ring_buffers/condensed_cachy.hpp"
+#include "src/benchmarks/ring_buffers/ring_buffer_tester.hpp"
 #include "src/benchmarks/rng/arrayfill.hpp"
 #include "src/benchmarks/rng/mersenne_twister.hpp"
 #include "src/benchmarks/rng/xoroshiro128+.hpp"
@@ -24,6 +28,7 @@ using benchmarks::Attribute;
 using benchmarks::AttributeOptimisation;
 using benchmarks::BranchPredictionSorted;
 using benchmarks::BranchPredictionUnsorted;
+using benchmarks::BufferTester;
 using benchmarks::ExecutionPolicies;
 using benchmarks::MersenneTwister;
 using benchmarks::MersenneTwisterArrayFill;
@@ -199,16 +204,28 @@ void arrayFill() {
     benchmarks::executeBench(ITERATIONS, SAMPLES, mersenne, scalarXORO, bufferedXORO, simdXORO);
 }
 
-void binarySearchLayouts() {
-    constexpr static size_t ITERATIONS{1};
-    constexpr static size_t NUM_ELEMENTS{100000};
-    constexpr static size_t NUM_SEARCHED{1000};
-    constexpr static size_t SAMPLES{100};
+void ringBufferImplementations() {
+    constexpr static size_t BUFFER_CAPACITY{10000000};
+    constexpr static size_t ITERATIONS{10000000};
+    constexpr static size_t SAMPLES{30};
 
-    auto standard = StandardBinarySearch<NUM_ELEMENTS, NUM_SEARCHED>();
+    auto standard = BufferTester<RingBuffer>(BUFFER_CAPACITY);
+    auto cachy = BufferTester<CachingRingBuffer>(BUFFER_CAPACITY);
+    auto mine = BufferTester<CachingRingBufferCompressed>(BUFFER_CAPACITY);
 
-    benchmarks::executeBench(ITERATIONS, SAMPLES, standard);
-}
+    benchmarks::executeBench(ITERATIONS, SAMPLES, standard, cachy, mine);
+};
+
+// void binarySearchLayouts() {
+//     constexpr static size_t ITERATIONS{1};
+//     constexpr static size_t NUM_ELEMENTS{100000};
+//     constexpr static size_t NUM_SEARCHED{1000};
+//     constexpr static size_t SAMPLES{100};
+
+//     auto standard = StandardBinarySearch<NUM_ELEMENTS, NUM_SEARCHED>();
+
+//     benchmarks::executeBench(ITERATIONS, SAMPLES, standard);
+// }
 
 int main() {
     try {
@@ -222,7 +239,8 @@ int main() {
         // runStringOptimsationBenchmark();
         // runArrayWriteBenchmark();
         // arrayFill();
-        binarySearchLayouts();
+        // binarySearchLayouts();
+        ringBufferImplementations();
     } catch (const std::exception& e) {
         std::cout << "Error: " << e.what() << std::endl;
     } catch (...) {
