@@ -240,7 +240,57 @@ A parallel execution policy though has ~7.85x speedup which is quite nice.
 A parallel unsequenced execution policy though lead to further improvements, with it being ~9.2x faster.
 This is ~1.17x faster than the parallel execution policy which is great.
 
-# Ring buffer optimizations and minimizing coherencce traffic
+# Ring buffer optimizations and minimizing coherence traffic
+
+Inspired by https://rigtorp.se/ringbuffer/.
+For a single producer single consumer queue an efficient data structure is the ring buffer.
+One thread is a producer which pushes data into the FIFO queue while another thread is the consumer popping data off it.
+Being lock free it avoids using any pricy concurrency primitives which is nice.
+It essentially works like this in pseudocode.
+
+```
+std::vector<DataType> data;
+alignas(64) std::atomic<size_t> read_idx{}; // Where the next read will go
+alignas(64) std::atomic<size_t> write_idx{}; // Where the next write will go
+
+when write_idx == read_idx the queue is empty
+when ((write_idx + 1) % data.size() == read_idx) the queue is full
+
+bool push(DataType d) {
+    // check the queue is not full, if it isn't push it in at read_idx and advance read_idx by 1
+    // returns false if the queue is full as the push failed
+}
+
+bool pop(DataType& d) {
+    // check the queue is not empty, if it isn't empty then d = data[write_idx] and advance write_idx by 1
+    // returns false if queue is empty as pop failed
+}
+```
+
+This implementation has a major hidden performance issue based on cache coherency.
+Most CPUs use a cache coherency protocol like MESI which basically states a cacheline must be in one of the following states.
+
+- Modified: Cacheline is only present in this core's cache and it is dirty (different to main memory)
+- Exclusive: Cacheline is only present in this core's cache and it is clean
+- Shared: Cacheline is present in the cache of multiple core's and it is clean (kindof)
+- Invalid: The cacheline is just invalid / unused
+
+Consider a cacheline in modified state.
+If another core wants to read that data and goes to main memory it will get an outdated copy.
+This is obviously an issue, so we need to transition the cachelines state from modified to shared so the other core can read it.
+In shared state the data should be "clean" so it should get written back to memory.
+Realistically it may just use a cache to cache transfer which is faster like in MOESI.
+The owner is responsible for writing it back to memory and everyone is just viewing it.
+This requires cross-core communication for the cache to cache transfer which is slow.
+This may take say 30 clock cycles while a L1 cache access is just ~ 1-4 cycle.
+
+Once in shared state if we want to modify the cache line, we have to make sure only we have that cacheline.
+Else we may modify our own cacheline, but another core is looking at an outdated version of it which is bad.
+So we know it is in a shared state, and need to do a RFO (request for ownership) to move it into an exclusive state where only we own it.
+Now that it is in exclusive state we are allowed to write to it, transitioning it to modified state.
+This RFO is slow though, also say ~30 clock cycles we are effectively asking every core to invalidate that cacheline if they have a copy.
+Then we have to wait for their confirmation that they have invalidated it before we can move it to exclusive state.
+This whole thing is slow and obviously not ideal at all.
 
 # SSO
 
