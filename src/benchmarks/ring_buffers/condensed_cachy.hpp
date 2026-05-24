@@ -11,11 +11,17 @@ struct CachingRingBufferCompressed {
     // but I'm interested in how much. Now when say the popper hits its cache and needs to check the
     // write_idx the read_idx_cache will be on the same cacheline so they both get moved into
     // shared state. If the writer needs to write to the write_idx it will have to get exclusive
-    // control of the cacheline to move it to modified. This is the same in both cases. If the
+    // control of the cacheline to move it to modified, this also takes control of the
+    // read_idx_cache which is on the same cacheline. This is the same cost in both cases. If the
     // writer just is reading the read cache then it being in a shared state doesn't matter. In the
     // case the read cache needs updating the writer will need to additionally take control of the
-    // write_data cache line. If it doesn't take control now it will in the next loop anyways since
-    // it writes to it every loop so I theorize performance loss would be minor.
+    // write_data cache line. I expect this would be uncommon because it would require a) current it
+    // is halfway through a push when the readers cache runs out. In this same push the writers
+    // cache also runs out. Then it has to take control of the cacheline but it would need to take
+    // control in the next loop anyways since it writes to the cacheline to increment read_idx. So
+    // this would just be doing it ahead of time. So the reader would have to then read again before
+    // the pusher completes this same loop and take control back because its reader cache runs out.
+    // I theorize performance loss is minor as this case is fairly rare.
     alignas(std::hardware_destructive_interference_size) struct {
         std::atomic<size_t> read_idx{0};
         size_t write_idx_cache{0};

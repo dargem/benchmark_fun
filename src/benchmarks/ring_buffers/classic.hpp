@@ -2,9 +2,12 @@
 
 #include <atomic>
 #include <new>
+#include <string>
 #include <vector>
 
 struct RingBuffer {
+    std::string name = "Classic ring buffer";
+
     std::vector<int> data;
     alignas(std::hardware_destructive_interference_size) std::atomic<size_t> read_idx{0};
     alignas(std::hardware_destructive_interference_size) std::atomic<size_t> write_idx{0};
