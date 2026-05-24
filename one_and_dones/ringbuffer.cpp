@@ -102,8 +102,8 @@ void pinThread(int cpu) {
 
 template <typename T>
 void bench(int cpu1, int cpu2) {
-    const size_t queueSize = 100000;
-    const int64_t iters = 100000000;
+    const size_t queueSize = 1000000;
+    const int64_t iters = 1000000000;
 
     T q(queueSize);
     auto t = std::thread([&] {
@@ -142,7 +142,8 @@ int main(int argc, char* argv[]) {
     }
 
     bench<ringbuffer>(cpu1, cpu2);
-    // bench<ringbuffer2>(cpu1, cpu2);
+    bench<ringbuffer2>(cpu1, cpu2);
 
     return 0;
 }
+// g++ -Wall -O3 -march=native -std=c++20 ringbuffer.cpp

@@ -314,6 +314,55 @@ This results in an expensive RFO signal and this ping-pongs back at forth tankin
 This is also happening with popper incrementing read_idx while the pusher needs to read from it.
 There isn't a perfect solution to this but there's ways to minimize the amount of inter-core communication needed.
 
+To check if we can push/pop elements we need to do this comparison first.
+when write_idx == read_idx the queue is empty (can't pop)
+when ((write_idx + 1) % data.size() == read_idx) the queue is full (can't write without data loss)
+But we can minimize this through using a cached read and write idx that exist on their own cache line.
+The writer compares the write_idx with its cached read_idx.
+We know the real read_idx is ahead of our cache but if the write_idx is behind our cache its also behind the real read_idx.
+So we can just check our own cached copy minimizing cross-core communication.
+If our write_idx is == cached_read_idx then we need to update our cache with the real read_idx.
+So the writer now only needs to do a costly cache to cache transfer with an extra RFO later when the cache_read_idx runs out rather than each push.
+This is the same with the popper which uses a cache_write_idx.
+
+There was a decent amount of variability across program runs despite pinning threads to cores and cycling between tests so take the confidence intervals with more than a grain of salt.
+
+```
+---Summary statistics for Classic ring buffer benchmark---
+Sample mean cycles per test: 2.04386e+08
+Confidence interval: 2.01442e+08-2.07331e+08
+Sample standard deviation: 1.48374e+07
+Tests used: 100
+---Summary statistics for Caching ring buffer benchmark---
+Sample mean cycles per test: 6.81954e+07
+Confidence interval: 6.72367e+07-6.91541e+07
+Sample standard deviation: 4.83165e+06
+Tests used: 100
+```
+
+Basically a ~3x increase in speed for a 10000 size buffer passing through 10 million elements.
+And for a bench with a million element buffer passing through 100 million elements.
+
+```
+---Summary statistics for Classic ring buffer benchmark---
+Sample mean cycles per test: 2.16626e+09
+Confidence interval: 2.16177e+09-2.17075e+09
+Sample standard deviation: 2.26371e+07
+Tests used: 100
+
+---Summary statistics for Caching ring buffer benchmark---
+Sample mean cycles per test: 1.00949e+09
+Confidence interval: 9.95643e+08-1.02334e+09
+Sample standard deviation: 6.97944e+07
+Tests used: 100
+```
+
+Its getting ~2x ish speedup.
+This was inspired by Erik Rigtorps article which claimed a 20x speedup.
+I only noted a 2x speedup when compiling his benchmark with the same flags.
+Shows optimizations based on hardware effects will vary substantially based on the hardware.
+Regardless its going to lead to a performance improvement.
+
 # SSO
 
 One of the key differences between std::string and a c style string made through a char array is a std::string is resizable.

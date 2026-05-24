@@ -15,6 +15,11 @@ struct RingBuffer {
     // Zero initialise data
     RingBuffer(size_t capacity) : data(capacity, 0) {}
 
+    void reset() {
+        read_idx.store(0, std::memory_order_relaxed);
+        write_idx.store(0, std::memory_order_relaxed);
+    }
+
     bool push(int val) {
         const auto current_write_idx = write_idx.load(std::memory_order_relaxed);
         auto next_write_idx = current_write_idx + 1;

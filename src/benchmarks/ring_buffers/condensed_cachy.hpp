@@ -31,6 +31,13 @@ struct CachingRingBufferCompressed {
     // Zero initialise data
     CachingRingBufferCompressed(size_t capacity) : data(capacity, 0) {}
 
+    void reset() {
+        read_data.read_idx.store(0, std::memory_order_relaxed);
+        read_data.write_idx_cache = 0;
+        write_data.write_idx.store(0, std::memory_order_relaxed);
+        write_data.read_idx_cache = 0;
+    }
+
     bool push(int val) {
         const auto current_write_idx = write_data.write_idx.load(std::memory_order_relaxed);
         auto next_write_idx = current_write_idx + 1;

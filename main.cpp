@@ -205,9 +205,9 @@ void arrayFill() {
 }
 
 void ringBufferImplementations() {
-    constexpr static size_t BUFFER_CAPACITY{10000000};
-    constexpr static size_t ITERATIONS{10000000};
-    constexpr static size_t SAMPLES{30};
+    constexpr static size_t BUFFER_CAPACITY{1000000};
+    constexpr static size_t ITERATIONS{100000000};
+    constexpr static size_t SAMPLES{100};
 
     auto standard = BufferTester<RingBuffer>(BUFFER_CAPACITY);
     auto cachy = BufferTester<CachingRingBuffer>(BUFFER_CAPACITY);
