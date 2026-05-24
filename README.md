@@ -257,12 +257,12 @@ when write_idx == read_idx the queue is empty
 when ((write_idx + 1) % data.size() == read_idx) the queue is full
 
 bool push(DataType d) {
-    // check the queue is not full, if it isn't push it in at read_idx and advance read_idx by 1
+    // check the queue is not full, if it isn't push it into data at write_idx and advance write_idx by 1
     // returns false if the queue is full as the push failed
 }
 
 bool pop(DataType& d) {
-    // check the queue is not empty, if it isn't empty then d = data[write_idx] and advance write_idx by 1
+    // check the queue is not empty, if it isn't empty then d = data[read_idx] and advance read_idx by 1
     // returns false if queue is empty as pop failed
 }
 ```
@@ -291,6 +291,28 @@ Now that it is in exclusive state we are allowed to write to it, transitioning i
 This RFO is slow though, also say ~30 clock cycles we are effectively asking every core to invalidate that cacheline if they have a copy.
 Then we have to wait for their confirmation that they have invalidated it before we can move it to exclusive state.
 This whole thing is slow and obviously not ideal at all.
+
+Moving back to how this is actually relevant, say thread A is the pusher and thread B is the popper.
+They are running in different physical cores.
+For thread A to push it
+
+1. Reads write_idx and read_idx to check we can do a push
+2. If we can do a push, do a write to the data vector and increment write_idx
+
+For thread B to read it
+
+1. Reads write_idx and read_idx to check if we can do a read
+2. If we can do a read, read from the data vector and increment read_idx
+
+Both threads are doing this concurrently which is leading to some cacheline ping-pong.
+For example with A we move the write_idx cacheline to a modified state.
+But B needs to read write_idx to check if the queues not empty so it can pop from it.
+But write_idx's cacheline is in exclusive state so we need to move it into a shared state so our core can get a copy.
+This results in an expensive cache to cache transfer.
+Then A does another write and needs exclusive control of write_idx to modify it.
+This results in an expensive RFO signal and this ping-pongs back at forth tanking performance.
+This is also happening with popper incrementing read_idx while the pusher needs to read from it.
+There isn't a perfect solution to this but there's ways to minimize the amount of inter-core communication needed.
 
 # SSO
 
