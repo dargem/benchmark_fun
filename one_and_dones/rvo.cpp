@@ -26,7 +26,7 @@ class AFactory {
         // object at where the caller expects to receive it. This is done through RVO (return value
         // optimization) which is guaranteed starting with c++ 17 under certain conditions. This is
         // guaranteed, so even if construction/destruction has observable behaviour the copy must be
-        // elided.
+        // elided. This is commonly known as copy elision.
         return A{};
         // If we return a prvalue (pure right value) there is guaranteed RVO. This must be a pure
         // right value not just an ordinary right value. This makes sense because something like
