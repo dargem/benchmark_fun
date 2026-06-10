@@ -5,7 +5,7 @@
 #include <new>
 #include <type_traits>
 
-namespace utils {
+namespace benchmarks {
 
 template <bool Aligned = true>
 class Arena {
@@ -102,4 +102,4 @@ class Arena {
     std::byte* current;  // next free byte
 };
 
-}  // namespace utils
+}  // namespace benchmarks

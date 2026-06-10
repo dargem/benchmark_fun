@@ -9,7 +9,7 @@ namespace benchmarks {
 // base class for benchmarks
 class Benchable {
    public:
-    explicit Benchable(std::string name) : name{std::move(name)} {}
+    explicit Benchable(std::string&& name) : name{std::move(name)} {}
 
     // call when reusing a benchmark, assume benchables will need some setup
     virtual void resetBenchmark() = 0;
