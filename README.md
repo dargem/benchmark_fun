@@ -180,6 +180,62 @@ Obviously trying to organize data in a way operations can be vectorized can be v
 but up to a 10x performance increase is a must have for some performance critical systems.
 Game engines make heavy use of this through using an ECS (entity component system).
 
+# Heap Allocation Costs & Alternatives
+
+Dynamic memory allocation is rightfully though of as fairly expensive. A brief overview on how most system allocators like `new` or `malloc` work is they request a large block of memory from the OS, such as with mmap on linux. It can then split this block into small chunks. It commonly does this through managing a freelist which is essentially a linked list of unallocated chunks of memory. A caller asks the allocator for N bytes of memory, so the allocator traverses the free list to find a suitably sized block. If the block it finds is larger than requested it can split the block, and if it can't find any blocks large enough it can just allocate more memory. As more allocations / deallocations are made fragmentation occurs as free memory gets scattered into small non contiguous chunks. This leads to more time taken for allocations. Compare this to the stack where all you need to do is increment the stack pointer this is obviously a lot more involved. A solution to the high cost is custom allocators such as Arena Allocators which generally have their own tradeoffs. An Arena allocator is very similar to a stack, you allocate memory on construction (typically an excessive amount remember the no reserve vector trick). Then you have a start pointer to this memory and a current pointer. If you allocated a 4 byte object you would simply bump the current pointer up by 4 bytes like a stack.
+
+```
+template <typename T>
+    requires std::same_as<std::remove_cvref_t<T>, T> && std::is_trivially_destructible_v<T>
+T* allocate(size_t n) {
+    // This allocates aligned memory so we make sure current ptr is aligned here
+    current +=
+        (alignof(T) - reinterpret_cast<uintptr_t>(current) % alignof(T)) % alignof(T);
+    T* ptr = reinterpret_cast<T*>(current);
+    current += sizeof(T) * n;
+    return ptr;
+}
+```
+
+This is an example implementation, this is incredibly simple and quick but it lacks flexibility. For example you cannot free memory you have allocated, you can only keep on advancing the stack pointer. You could "free" memory but it would have to be the last thing allocated LIFO style. This however has some major benefits surprisingly as it ties together the lifetimes of objects. Rather than managing the lifetime of each object, each objects lifetime is tied to the Arena. Calling `reset()` on the arena essentially frees every object. This is also incredibly quick as its just setting the arena's current ptr to the beginning of the "stack". In a game engine for example, each iteration of the game loop renders a frame, and the lifetimes of the objects allocated during the frame can all be discarded at the end of it. An Arena for example could be created at the start of the frame, and all heap allocation far faster using the Arena rather than something like `new`. The complexity of managing lifetimes is erased as the arena is just reset at the end of the frame, freeing every single object in essentially just one operation. You will notice I have allocate require T to be trivially destructible which makes sense because we aren't actually calling the destructor of anything allocated in the arena. If you allocated an object on the arena, where its destruction would release a resource in RAII fashion you could get nasty behaviour.
+
+I ran a benchmark of allocating 500000 objects using my arena impl vs new. This bench here only considered allocation not deletion.
+
+```
+---Summary statistics for New Allocator---
+Sample mean cycles per test: 3.0432e+07
+Confidence interval: 3.01587e+07-3.07053e+07
+Sample standard deviation: 1.37746e+06
+Tests used: 100
+
+---Summary statistics for Arena Allocator---
+Sample mean cycles per test: 1.2367e+06
+Confidence interval: 1.18802e+06-1.28538e+06
+Sample standard deviation: 245354
+Tests used: 100
+```
+
+We see a ~24.6x speed increase which is massive but also very expected.
+If you are heap allocating something you are (hopefully if you don't have a memory leak) freeing it.
+This bench considers allocating 500000 integers and then freeing them all.
+For the Arena allocator remember resetting the arena is an O(1) operation, just changing a pointer.
+
+```
+---Summary statistics for New Allocator---
+Sample mean cycles per test: 4.70493e+07
+Confidence interval: 4.67713e+07-4.73274e+07
+Sample standard deviation: 1.40124e+06
+Tests used: 100
+
+---Summary statistics for Arena Allocator---
+Sample mean cycles per test: 1.24693e+06
+Confidence interval: 1.16295e+06-1.33091e+06
+Sample standard deviation: 423245
+Tests used: 100
+```
+
+We see a 37.7x speedup now since `new` tanks in performance while the arena allocator is ~same speed.
+
 # Execution Policies
 
 C++ 17 introduces some execution policies which can be used on some range based algorithms in the standard library.
