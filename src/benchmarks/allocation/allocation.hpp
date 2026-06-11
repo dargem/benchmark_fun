@@ -1,44 +1,65 @@
 #pragma once
 
-#include <concepts>
 #include <cstddef>
+#include <string_view>
 #include <utility>
 #include <vector>
 
+#include "benchmarks/allocation/arena.hpp"
+#include "benchmarks/allocation/new.hpp"
 #include "benchmarks/benchable.hpp"
 
 namespace benchmarks {
 
-template <typename Allocator>
-concept IsAllocator = requires(Allocator t, size_t n) {
-    { t.template allocate<int>(n) } -> std::same_as<int*>;
-    Allocator();
-    t.reset();
+enum class Allocator { ARENA, NEW };
+
+template <Allocator A>
+struct AllocatorTraits {};
+
+template <>
+struct AllocatorTraits<Allocator::ARENA> {
+    using A = Arena<true>;
 };
 
-template <typename Allocator>
-    requires IsAllocator<Allocator>
+template <>
+struct AllocatorTraits<Allocator::NEW> {
+    using A = NewWrapper;
+};
+
+template <Allocator A>
 class AllocationBench : public Benchable {
+    static constexpr std::string_view name = [] {
+        if constexpr (A == Allocator::ARENA) return "Arena Allocator";
+        if constexpr (A == Allocator::NEW) return "New Allocator";
+        return "fallback";
+    }();
+
    public:
-    AllocationBench(std::string&& name) : Benchable(std::forward<std::string>(name)), allocator() {}
+    AllocationBench() : Benchable(std::forward<std::string>(std::string(name))), allocator() {}
     AllocationBench(const AllocationBench&) = delete;
     AllocationBench operator=(const AllocationBench&) = delete;
 
     void runBenchmark(size_t iterations) override {
         a.reserve(iterations);
         for (size_t i{}; i < iterations; ++i) {
-            a.push_back(allocator.template allocate<int>(1));
+            a.push_back(allocator.template allocate<int>());
         }
     }
 
     void resetBenchmark() override {
-        allocator.reset();
+        if constexpr (A == Allocator::ARENA) {
+            allocator.reset();
+        } else {
+            for (int* p : a) {
+                delete p;
+            }
+        }
         a.resize(0);
     }
 
    private:
     std::vector<int*> a;
-    Allocator allocator;
+    AllocatorTraits<A>::A allocator;
 };
 
 }  // namespace benchmarks

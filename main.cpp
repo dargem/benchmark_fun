@@ -4,6 +4,7 @@
 #include "src/benchmarks/SOA_AOS/structures.hpp"
 #include "src/benchmarks/SSO/small_string_optimisation.hpp"
 #include "src/benchmarks/alignment/alignment.hpp"
+#include "src/benchmarks/allocation/allocation.hpp"
 #include "src/benchmarks/attributes/likely_attributes.hpp"
 #include "src/benchmarks/bench_runner.hpp"
 #include "src/benchmarks/binary_search/binary_search.hpp"
@@ -20,8 +21,9 @@
 #include "src/benchmarks/vector_access/vectors.hpp"
 #include "src/benchmarks/weird_vector/reserve_vector.hpp"
 #include "src/stats/anovas.hpp"
-#include "src/utils/arena.hpp"
 
+using benchmarks::AllocationBench;
+using benchmarks::Allocator;
 using benchmarks::AOS;
 using benchmarks::ArrayWrite;
 using benchmarks::Attribute;
@@ -227,6 +229,16 @@ void ringBufferImplementations() {
 //     benchmarks::executeBench(ITERATIONS, SAMPLES, standard);
 // }
 
+void allocatorBench() {
+    constexpr static size_t ITERATIONS{500000};
+    constexpr static size_t SAMPLES{100};
+
+    auto new_alloc = AllocationBench<Allocator::NEW>();
+    auto arena_alloc = AllocationBench<Allocator::ARENA>();
+
+    benchmarks::executeBench(ITERATIONS, SAMPLES, new_alloc, arena_alloc);
+}
+
 int main() {
     try {
         // runRNGBenchmark();
@@ -240,7 +252,8 @@ int main() {
         // runArrayWriteBenchmark();
         // arrayFill();
         // binarySearchLayouts();
-        ringBufferImplementations();
+        // ringBufferImplementations();
+        allocatorBench();
     } catch (const std::exception& e) {
         std::cout << "Error: " << e.what() << std::endl;
     } catch (...) {

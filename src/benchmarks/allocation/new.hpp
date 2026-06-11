@@ -10,9 +10,9 @@ class NewWrapper {
     template <typename T, size_t N = 1>
     T* allocate() {
         if constexpr (N == 1) {
-            T* ptr = new T();
+            return new T();
         } else {
-            T* ptr = new T[N];
+            return new T[N];
         }
     }
 

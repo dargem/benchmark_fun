@@ -1028,6 +1028,7 @@ void* operator new(size_t size) {
 
 void operator delete(void* ptr) noexcept {
     std::cout << "free called" << '\n';
+    // We also introduce a bug
     free(ptr);
 }
 
