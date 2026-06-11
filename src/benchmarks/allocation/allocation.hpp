@@ -26,7 +26,7 @@ struct AllocatorTraits<Allocator::NEW> {
     using A = NewWrapper;
 };
 
-template <Allocator A>
+template <Allocator A, bool BenchesDeletion = false>
 class AllocationBench : public Benchable {
     static constexpr std::string_view name = [] {
         if constexpr (A == Allocator::ARENA) return "Arena Allocator";
@@ -44,14 +44,26 @@ class AllocationBench : public Benchable {
         for (size_t i{}; i < iterations; ++i) {
             a.push_back(allocator.template allocate<int>());
         }
+
+        if constexpr (BenchesDeletion == true) {
+            if constexpr (A == Allocator::ARENA) {
+                allocator.reset();
+            } else {
+                for (int* p : a) {
+                    delete p;
+                }
+            }
+        }
     }
 
     void resetBenchmark() override {
-        if constexpr (A == Allocator::ARENA) {
-            allocator.reset();
-        } else {
-            for (int* p : a) {
-                delete p;
+        if constexpr (BenchesDeletion == false) {
+            if constexpr (A == Allocator::ARENA) {
+                allocator.reset();
+            } else {
+                for (int* p : a) {
+                    delete p;
+                }
             }
         }
         a.resize(0);

@@ -239,6 +239,16 @@ void allocatorBench() {
     benchmarks::executeBench(ITERATIONS, SAMPLES, new_alloc, arena_alloc);
 }
 
+void allocationAndDeletionBench() {
+    constexpr static size_t ITERATIONS{500000};
+    constexpr static size_t SAMPLES{100};
+
+    auto new_alloc = AllocationBench<Allocator::NEW, true>();
+    auto arena_alloc = AllocationBench<Allocator::ARENA, true>();
+
+    benchmarks::executeBench(ITERATIONS, SAMPLES, new_alloc, arena_alloc);
+}
+
 int main() {
     try {
         // runRNGBenchmark();
@@ -254,6 +264,7 @@ int main() {
         // binarySearchLayouts();
         // ringBufferImplementations();
         allocatorBench();
+        allocationAndDeletionBench();
     } catch (const std::exception& e) {
         std::cout << "Error: " << e.what() << std::endl;
     } catch (...) {
