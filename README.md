@@ -1009,9 +1009,52 @@ class AFactory {
 };
 ```
 
-This is a named value since its an lvalue not just an rvalue temporary. For NRVO elision can happen but its not guaranteed.
+This is a named value since its an lvalue not just an rvalue temporary. For NRVO, copy elision can happen but its not guaranteed.
 This means behaviour can differ depending on optimization level, this could lead to 2 construction and 2 deletions or just 1 of each.
 This makes sense since you shouldn't really be depending on observable behaviour of construction/deletion.
+
+Allocation Elision is less well known but interesting.
+It essentially says heap optimization can be optimized out by the compiler, even if that heap allocation has observable behaviour.
+This is good since heap allocation is expensive so if the compiler can find a way to stack allocate it thats better.
+This can lead to some interesting behaviour if you override new though.
+
+```
+// As big c fans we overload new and delete with malloc and free
+void* operator new(size_t size) {
+    std::cout << "malloc called" << '\n';
+    void* ptr = malloc(size);
+    return ptr;
+}
+
+void operator delete(void* ptr) noexcept {
+    std::cout << "free called" << '\n';
+    free(ptr);
+}
+
+int main() {
+    {
+        int* ptr = new int(5);
+        delete ptr;
+    }
+
+    return 0;
+}
+```
+
+Here we introduce a bug. While free deallocates memory, new both calls the destructor and deallocates memory.
+This means if we use delete on an object, its destructor isn't getting called here which could lead to memory leaks.
+For this scenario lets just forget about that. We overload our new / delete with malloc and free, printing when they are called.
+
+```
+int* ptr = new int(5);
+delete ptr;
+```
+
+Heap allocation obviously has no purpose but since allocation is observable so you would think it doesn't get optimized out.
+Or at least the print function still has to get called, but maybe it optimizes out internal malloc and free ops.
+Compiling it with GCC and no optimizations it prints that malloc and free gets called.
+However compiling with just -O1 leads to no prints being made.
+This is since the compiler is free to elide allocations even if that allocation has observable side effects.
 
 # plans
 
