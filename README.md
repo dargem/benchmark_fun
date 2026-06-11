@@ -2,6 +2,7 @@
 
 some random benchmarks of questionable accuracy but is hopefully interesting
 probably doesn't work on 32 bit systems due to hacky stuff!
+Also contains some info on random performance related C++ language features
 
 # Benches!
 
@@ -939,6 +940,78 @@ This allows the cutting of one byte from this struct which is good since it does
 This is interesting though that its been added as an attribute, as compilers are allowed to ignore attributes.
 This means the memory layout of objects could be dependent on compiler which is somewhat messy.
 GCC and CLANG will generally follow it, but MSVC always ignores it due to it breaking ABI as it changes object layouts.
+
+# Exceptions to the as-if rule
+
+Compilers provide a variety of optimizations through rewriting, reordering and elimination statements/expressions.
+This is good as it allows programmers to create readable code without sacrificing performance.
+Generally compilers follow the as-if rule which essentially allows the compiler to optimize however it wants if it doesn't change observable behaviour.
+This is important because you want to be able to trust that regardless of the compilers optimization level the program runs the exact same.
+However there are a few reasonable exceptions to as-if optimization in C++, these are:
+
+- Return Value Optimization (RVO) / Named Return Value Optimization (NRVO) / copy elision
+- Allocation elision (the compiler is free to optimize out heap allocation even if it has observable side effects surprisingly)
+- Not really counted but undefined behaviour (but here you don't have any guarantees on what the program does anyways)
+
+Imagine a scenario where construction / destruction of class A has observable behaviour
+
+```
+class A {
+   public:
+    A() {
+        static size_t constructions{};
+        std::cout << "Constructed N: " << ++constructions << '\n';
+    }
+
+    ~A() {
+        static size_t deletions{};
+        std::cout << "Deleted N: " << ++deletions << '\n';
+    }
+};
+
+class AFactory {
+   public:
+    A create() {
+        return A{};
+    }
+};
+
+int main() {
+    AFactory factory{};
+    A a = factory.create();
+}
+```
+
+Naively thinking through this code with something like a debugger, creating/destruction class A will lead to a print.
+For `A a = factory.create();` since factory.create() is returning an rvalue we will call the move constructor to create this instance of A.
+So factory.create() is going to run first, which is just `return A{}`.
+This is going to construct an instance of A, then the move constructor will be called on a using this instance.
+Then the rvalue will die and be destructed, then the stack will unwind and a will be destructed.
+So we could expect a construct construct delete delete to be printed.
+But this would obviously lead to unneeded overhead, when we could instead just have factory.create() construct the object inside a's address.
+This is called RVO (return value optimization) and its guaranteed to occur when returning a prvalue (pure right value).
+This is even if it leads to different observable behaviour so its an exception to the as-if rule.
+Since this elides a copy we only see construct delete printed, it completely elides one of the constructions/deletions.
+Since RVO is guaranteed this will happen even with no optimization so behaviour can be expected, but this isn't the case for NRVO.
+NRVO is for lvalues, e.g.
+
+```
+class AFactory {
+   public:
+    A create() {
+        A a{};
+        // etc
+        return a; // A is an lvalue not a prvalue
+
+        // note it must be a prvalue, not just an rvalue. This makes sense, consider std::move which is basically an rvalue cast.
+        // return std::move(a); // would return an xvalue which is a type of rvalue, but its obviously quite the different case.
+    }
+};
+```
+
+This is a named value since its an lvalue not just an rvalue temporary. For NRVO elision can happen but its not guaranteed.
+This means behaviour can differ depending on optimization level, this could lead to 2 construction and 2 deletions or just 1 of each.
+This makes sense since you shouldn't really be depending on observable behaviour of construction/deletion.
 
 # plans
 
