@@ -32,7 +32,7 @@ Sample standard deviation: 2.74565e+06
 Tests used: 50
 ```
 
-This is ≈2.5× faster, which is a large speedup from avoiding resizing. While in this case the size was known ahead of time since it's a test, the key point is that pushing any realistic number of elements won't trigger a resize and this hasn't wasted additional memory. This means if you have a vector and you don't know how many objects you need to push to it ahead of time, you could reserve an excessive amount of space without worries and never have to worry about resizes.
+This is ~2.5x faster, which is a large speedup from avoiding resizing. While in this case the size was known ahead of time since it's a test, the key point is that pushing any realistic number of elements won't trigger a resize and this hasn't wasted additional memory. This means if you have a vector and you don't know how many objects you need to push to it ahead of time, you could reserve an excessive amount of space without worries and never have to worry about resizes.
 
 Some proof is `top` (shows %CPU and memory usage) reports both reservation types maxing at about 0.3% memory usage. 40 MB / 16,000 MB (16 GB) ≈ 0.25% expected usage for the push-back loop; accounting for other memory used by the application and `top`'s rounding to 1dp, 0.3% is reasonable.
 
@@ -56,7 +56,7 @@ An Array of Structures (AoS) approach is the standard way to think about laying 
 
 An example is you have entities which have a velocity and an acceleration field laid out in SoA style. And say 1 second has passed so now we want to have each velocity += acceleration. In a SoA layout this means we have a velocity array and an acceleration array where index N corresponds to an entities velocity and acceleration. We want to use SIMD to accelerate this addition by doing that one addition instruction on multiple entities at once. The compiler can do this but it can also be a bit iffy and not, so we can use SIMD intrinsics which let you use specific CPU instructions without having to actually write assembly. They are surprisingly simple a good guide is [here] (https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#ig_expand=7113,140,119&techs=AVX_ALL).
 
-Data must first be loaded into special vector registers which are far larger than standard ones, for this example we will use 32 byte (256 bit) vector registers. And say the cpu supports AVX2 which most modern cpu's with x86 architecture likely will. Say velocity and acceleration are both doubles (8 bytes), this means we can have one vector register filled with 4 velocities, and another vector register with 4 accelerations. Then we can use `__m256d output = _mm256_add_pd(a, b);` Which will return a vector register which has added each paired velocity and acceleration together. We can then overwrite the 4 contiguous doubles from our original velocity vector with this register and we have successfully used one instruction on 4 pieces of data simultaneously. We can push this further, using single precision floats would let us pack 8 elements rather than 4 per 256 bit register. If your CPU is modern it may have 256 bit vector registers and you could be doing one operation on 16 pieces of data. If your CPU supports vectorization of half precision floats you could be doing one operation on 32 pieces of data simultaneously. If your CPU supports AVX512-BW instruction set you could be using SIMD instructions on data the size of a byte, and doing what would be 64 operations at once with 512 bit vector registers. Note sizes are implementation-defined; on my machine floats, doubles and `long double` are 4, 8 and 16 bytes respectively. `long double` size varies by platform and ABI.
+Data must first be loaded into special vector registers which are far larger than standard ones, for this example we will use 32 byte (256 bit) vector registers. And say the cpu supports AVX2 which most modern cpu's with x86 architecture likely will. Say velocity and acceleration are both doubles (8 bytes), this means we can have one vector register filled with 4 velocities, and another vector register with 4 accelerations. Then we can use `__m256d output = _mm256_add_pd(a, b);` Which will return a vector register which has added each paired velocity and acceleration together. We can then overwrite the 4 contiguous doubles from our original velocity vector with this register and we have successfully used one instruction on 4 pieces of data simultaneously. We can push this further, using single precision floats would let us pack 8 elements rather than 4 per 256 bit register. If your CPU is modern it may have 256 bit vector registers and you could be doing one operation on 16 pieces of data. If your CPU supports vectorization of half precision floats you could be doing one operation on 32 pieces of data simultaneously. If your CPU supports AVX512-BW instruction set you could be using SIMD instructions on data the size of a byte, and doing what would be 64 operations at once with 512 bit vector registers. Note sizes are implementation-defined; on my machine floats, doubles and `long double` are 4, 8 and 16 bytes respectively. `long double` size varies by platform and ABI. My machine has 256 bit vector registers and doesn't support the AVX512-BW instruction set which is a pity.
 
 ```
 ---Summary statistics for Array of Structures Iteration over uint8_t---
@@ -72,7 +72,10 @@ Sample standard deviation: 3408.38
 Tests used: 1000
 ```
 
-About ≈9× speedup due to SIMD: SoA is much faster here when operating on 1‑byte unsigned integers.
+About ~9x speedup due to SIMD: SoA is much faster here when operating on 1‑byte unsigned integers.
+This makes sense since my laptop doesn't support the AVX512-BW instruction set so its probably using epi32 (4 byte integer) instructions.
+With 256 bit vector registers we would be doing 8 operations simultaneously and gain some benefits from better cache locality.
+So taking a gander this speedup makes sense.
 Below is a more realistic example using floats (coordinates).
 
 ```
@@ -89,7 +92,7 @@ Sample standard deviation: 9523.02
 Tests used: 1000
 ```
 
-Still ≈3× speed increase on 4‑byte floats.
+Still ~3x speed increase on 4‑byte floats.
 
 ```
 ---Summary statistics for Array of Structures Iteration over double---
@@ -105,7 +108,7 @@ Sample standard deviation: 20420.2
 Tests used: 1000
 ```
 
-Slightly under a 2× speed increase for 8‑byte doubles, which is still a solid gain. The pattern is clear: smaller data types generally gain more from SIMD because the CPU can pack more elements into the same SIMD registers and operate on more data in parallel.
+Slightly under a ~2x speed increase for 8‑byte doubles, which is still a solid gain. The pattern is clear, smaller data types generally gain more from SIMD because the CPU can pack more elements into the same SIMD registers and operate on more data in parallel.
 
 ```
 ---Summary statistics for Array of Structures Iteration over long double---
@@ -121,9 +124,7 @@ Sample standard deviation: 372367
 Tests used: 1000
 ```
 
-Performance gains largely disappear for 16‑byte `long double`. SoA is still statistically faster (p < 0.05), but the difference is small and may be due to cache locality.
-
-The CPU used here is Zen 4 based. AVX-512 support varies by model and vendor; many consumer Zen 4 parts do not expose AVX-512, while AVX2 (256‑bit) is common. Note that many x86‑64 ABIs represent `long double` as an 80‑bit extended precision value stored in 16 bytes (10 bytes of data + 6 bytes padding) for alignment. AVX2/AVX-512 do not support 80‑bit floats directly, so the compiler often emits scalar code for `long double`, which reduces vectorization benefits.
+Performance gains largely disappear for 16‑byte `long double`. SoA is still statistically faster (p < 0.05), but the difference is small and probably due to better cache locality. This makes sense, AVX2/AVX-512 does not support vectorizing long doubles so the compiler would emit scalar instructions for `long double`. As such there would be no vectorization benefits.
 
 ```
 ---Summary statistics for Array of Structures Iteration over 16‑bit float (half precision)---
@@ -132,16 +133,21 @@ Confidence interval: 498174-501758
 Sample standard deviation: 28875.4
 Tests used: 1000
 
----Summary statistics for Structure of Arrays iteration over 16 bit float---
+---Summary statistics for Structure of Arrays iteration over 16-bit float---
 Sample mean cycles per test: 541937
 Confidence interval: 539957-543917
 Sample standard deviation: 31900.5
 Tests used: 1000
 ```
 
+Here we see minimal performance gains from an array of half precision 16 bit floats, despite 32 bit floats getting a 3x speedup.
+This is because my CPU does not support the instructions for vectorizing half precision floats so the compiler falls back to slow scalar instructions.
+This is pretty awful since its a massive tank in performance from using half precision rather than single precision floats.
+There is a statistically significant result SoA is faster but this is likely all due to cache locality.
+
 <br>
 
-Organizing data for vectorization can be counterintuitive, but up to a 10× performance increase makes it worthwhile for performance‑critical systems. Game engines commonly use ECS (Entity Component System) patterns to exploit these gains.
+Organizing data for vectorization can be counterintuitive, but up to a 10x performance increase makes it worthwhile for performance‑critical systems. Game engines commonly use ECS (Entity Component System) patterns to exploit these gains.
 
 # Heap Allocation Costs & Alternatives
 
