@@ -446,15 +446,15 @@ The implementation must distinguish stack vs. heap mode before being able to rea
 
 # Sorting to help with branch prediction
 
-Benchmark is an iteration through a list of random numbers in range a to b.
+CPU's for maximum speed use instruction pipelining for instruction level parallelism within a single core. A CPU core has many execution units which could all be working at the same time. Additionally you want to avoid the CPU stalling due to data dependencies, it may have to wait for B to finish before it can start C as C is dependent on B. Pipelining attempts to keep the whole processor busy by working on multiple instructions simultaneously that aren't dependent on each other. This is good to avoid stalling, but sometimes there are issues like branch instructions. These are essentially if statements, e.g. if (condition) do A else B. There is a clear dependency, depending on the condition different instructions may execute. The processor could stall but this is a loss in performance as it idles, so it uses a tool called branch predictions. Essentially the CPU makes an informed guess on whether the statement will be true or not. Say the CPU guesses it will be true, it will start executing A. If the CPU's guess is correct all is well and it has saved some time. If the CPU guesses wrong this speculative execution has lead to issues, it now needs to clear the instruction pipeline and start over. Clearing the instruction pipeline leads to a 15-20 cycle cost on an incorrect prediction. Interestingly for modern processors branch prediction has gotten more expensive because they use larger pipelines allowing for them to make better use of their high processing power. CPU's have a couple interesting tools to make good predictions. One of these is a Branch History Table which is basically as it sounds a history of whether that branch has been true or false in the past. If the Branch History Table shows that the recent branches have mostly evaluated to false, speculatively executing the instructions on a false evaluation is probably going to lead to less failed predictions.
+
+This benchmark is an iteration through a list of random numbers in range a to b.
 If that number is larger than (a+b)/2 a number gets incremented.
-The compiler is stopped from making this loop branchless,
-so the cpu has to do branch predictions which are effectively random.
-An incorrect branch prediction requires the core to flush the instruction pipeline.
-This leads to a ~15-20 cycle cost on an incorrect prediction.
-Sorting this list before iteration helps the branch predictor,
-as for the ~ first half of the list it'll be smaller than the mean (approximately) while its larger than for the second half.
-This makes branch prediction very easy, so sorting a list should result in better performance.
+The compiler is stopped from making this loop branchless, so the cpu has to do branch predictions which are effectively random.
+As such its basically going to flounder around failing every second prediction,
+but by sorting this list before iteration the branch predictor will work great.
+For the ~first half of the list it'll be smaller than the mean (approximately) while its larger than for the second half.
+This makes branch prediction very easy, so sorting a list should result in improved performance.
 
 ```
 ---Summary statistics for Branch Prediction Sorted Version---
@@ -470,7 +470,8 @@ Sample standard deviation: 27723.8
 Tests used: 300
 ```
 
-As seen, this yields roughly a 90% performance improvement from a hardware‑level optimization.
+As seen, this yields roughly a 90% performance improvement from a strange hardware‑level optimization.
+Of course this is only if you forget about the sort itself.
 
 # Random access of char vs uint8_t vs bool vectors
 
