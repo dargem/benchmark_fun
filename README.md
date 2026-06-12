@@ -371,7 +371,7 @@ Erik Rigtorp's article claimed larger improvements of 20x, and this shows actual
 
 # SSO
 
-`std::string` differs from a C‑style `char[]` in that it's resizable and often manages a heap allocation (similar to `std::vector`). Allocating small strings on the heap can be costly, so many implementations use SSO (Small String Optimization): small strings are stored directly inside the `std::string` object (in the space otherwise used for the pointer/capacity), avoiding a heap allocation.
+`std::string` differs from a C‑style `char[]` in that it's resizable and often manages a heap allocation (similar to `std::vector`). Allocating small strings on the heap can be costly, so many implementations use SSO (Small String Optimization): small strings are stored directly inside the `std::string` object (commonly in the space otherwise used for the pointer/capacity), avoiding a heap allocation.
 
 Benchmark results (microbenchmark of small string sizes):
 
@@ -401,11 +401,11 @@ Sample standard deviation: 9740.29
 Tests used: 300
 ```
 
-You can see the effect clearly: increasing the string size from 16 to 17 bytes causes a ≈2.8× drop in performance due to falling out of the SSO fast path.
+You can see the effect clearly: increasing the string size from 16 to 17 bytes causes a ~2.8× drop in performance due to it falling out of the SSO fast path.
 This is a clear drop off between stack and heap allocation "modes", this is called SSO (small string optimization) as you avoid needing a heap allocation for small strings.
 Note that by a string of size 16, I mean it holds 16 bytes total which includes the null terminator, not 16 characters + "hidden" 17th character null terminator.
 So the dropoff starting at 16 shows the String uses at max a 16 byte char stack buffer inside it.
-This used the libstdc++ standard library implementation where a string is 32 bytes.
+This used the libstdc++ standard library implementation where a string is 32 bytes total.
 A simplified version of how its implemented is along these lines.
 
 ```
@@ -421,7 +421,7 @@ class String {
 };
 ```
 
-The union member only occupies the space of its largest member (the 16‑byte `stackbuf`). This layout reuses the 8‑byte `capacity` field alongside the 16‑byte buffer. It doesn't type‑pun both `data` and `capacity`, only `capacity`, so it "wastes" 8 bytes when using a heap‑allocated buffer (which needs two `size_t` values and a pointer). A benefit is the mode check is simple: if `data` points into `stackbuf`, the string is in SSO mode; otherwise it uses a heap buffer.
+The union member only occupies the space of its largest member (the 16‑byte `stackbuf`). This layout reuses the 8‑byte `capacity` field alongside the 16‑byte buffer. It doesn't type‑pun both `data` and `capacity`, only `capacity`, so it "wastes" 8 bytes when using a heap‑allocated buffer (which needs two `size_t` values and a pointer). A benefit is the mode check is simple: if `data` points into `stackbuf`, the string is in SSO mode; otherwise it uses a heap buffer. This has benefits, when reading the string the Union does not need to internally check the "mode" it is in and perform any tricks, it just knows the data pointer is pointing at the start of the string, and the size field will be its length.
 
 Some implementations (e.g., libc++) use different tricks, type‑punning multiple fields to increase in‑object storage (e.g., 23 characters in a 24‑byte object). A simplified illustration follows:
 
@@ -442,7 +442,7 @@ class String {
 };
 ```
 
-The implementation must distinguish stack vs. heap mode. One common technique encodes the mode in a pointer's low bits or uses a reserved bit in a size field. That may reduce the range of representable sizes in SSO mode (e.g., to 127) but is acceptable since SSO stores only small strings (≈22 characters plus a null terminator). In heap mode, capacities remain large (e.g., up to 2^63). See a deeper explanation at https://joellaity.com/2020/01/31/string.html.
+The implementation must distinguish stack vs. heap mode before being able to read the string unlike the libstdc++ one. One common technique encodes the mode in a pointer's low bits or uses a reserved bit in a size field. That may reduce the range of representable sizes in SSO mode (e.g., to 127) but is acceptable since SSO stores only small strings (≈22 characters plus a null terminator). In heap mode, capacities remain large (e.g., up to 2^63) which is more than enough. See a deeper explanation at https://joellaity.com/2020/01/31/string.html. This is more space efficient and could be faster if those extra characters are able to avoid needing a heap allocation. But now just accessing the string takes some overhead as you need to check what "mode" it is in first, it also increases complexity though it is just abstracted away.
 
 # Sorting to help with branch prediction
 
