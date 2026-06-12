@@ -151,11 +151,9 @@ Organizing data for vectorization can be counterintuitive, but up to a 10x perfo
 
 # Heap Allocation Costs & Alternatives
 
-Dynamic memory allocation is commonly thought of as relatively expensive. Most system allocators (e.g., `new`, `malloc`) request large blocks from the OS (for example using `mmap` on Linux) and split them into smaller chunks. They often manage a free list (a linked list of free chunks). A caller requests N bytes, and the allocator traverses the free list to find a suitable block. If needed, it can split a larger block or request more memory from the OS. Over time, allocations and deallocations can fragment memory into small non‑contiguous chunks, which makes finding a suitably large block slower.
+Dynamic memory allocation is commonly thought of as relatively expensive. Most system allocators (e.g., `new`, `malloc`) request large blocks from the OS (for example using `mmap` on Linux) and split them into smaller chunks. They often manage a free list (a linked list of free chunks). A caller requests N bytes, and the allocator traverses the free list to find a suitable sized block. If needed, it can split a larger block and allocate pieces of it, or request more memory from the OS. Over time, allocations can fragment memory into small non‑contiguous chunks, which makes finding a suitably large block slower. This leads to more time taken for allocations as it starts taking longer to find a suitably sized free chunk, especially if the allocation requires a large amount of data.
 
-This leads to more time taken for allocations as it starts taking longer to find free chunks.
-
-By contrast, allocating on the stack is just an increment of the stack pointer, which is much cheaper. A common solution for heap allocation cost is to use custom allocators such as arena allocators. An arena works like a stack: allocate a large block up front (similar to the reserve trick), keep a start pointer and a current pointer, and bump the current pointer by the allocation size.
+By contrast, allocating on the stack is just an increment of the stack pointer. A common solution for heap allocation cost is to use custom allocators such as arena allocators. An arena works like a stack: allocate a large block up front (similar to the reserve trick), keep a start pointer and a current pointer, then bump the current pointer by the allocation size.
 
 ```
 template <typename T>
@@ -170,7 +168,9 @@ T* allocate(size_t n) {
 }
 ```
 
-This example is simple and fast but lacks flexibility: you can't free individual allocations — you can only advance the pointer, or reset the arena to free everything (LIFO semantics). This ties object lifetimes to the arena: calling `reset()` reclaims all memory in O(1) by resetting the pointer. This pattern is useful for per‑frame allocations in a game engine. Note the `allocate` function requires `T` to be trivially destructible because destructors aren't called for arena allocations; allocating objects with nontrivial destructors that manage resources can produce incorrect behavior.
+This example is simple and fast but lacks flexibility in that you can't free individual allocations. You can only advance the pointer or reset the arena to free everything (LIFO semantics). This ties object lifetimes to the arena: calling `reset()` reclaims all memory in O(1) by resetting the current pointer back to the beginning. This pattern is useful for per‑frame allocations in a game engine for example as the lifetime of everything allocated in that frame lives and dies in it.
+
+Note my `allocate` function requires `T` to be trivially destructible because destructors aren't called when resetting the arena. Allocating objects with nontrivial destructors that manage resources can produce incorrect behavior.
 
 I ran a benchmark allocating 50,000 4‑byte objects using my arena implementation vs `new`. This benchmark measured allocation only (no deletion).
 
@@ -188,7 +188,7 @@ Sample standard deviation: 18702.6
 Tests used: 1000
 ```
 
-We see ≈21.6× speedup, which is expected. If you allocate on the heap you typically also free; this benchmark also considers freeing 50,000 integers. Resetting the arena is an O(1) operation (just change a pointer).
+We see a ~21.6x speedup, which is expected. But if you allocate on the heap you typically also free it eventually; this benchmark also considers freeing 50,000 integers.
 
 ```
 ---Summary statistics for New Allocator---
@@ -204,7 +204,8 @@ Sample standard deviation: 14298.2
 Tests used: 1000
 ```
 
-We see ≈25.25× speedup in this test. To model more realistic behavior, I ran another benchmark where allocation sizes were uniformly distributed in [1, 256] bytes. As the free list fragments, fulfilling larger allocations becomes harder, and `new` slows further.
+We see ~25.25x speedup in this test. The arena allocator is essentially the same speed as before since resetting the arena is O(1) just changing the address pointed to of the current pointer.
+To model more realistic behavior, I ran another benchmark where allocation sizes were uniformly distributed in [1, 256] bytes. As the free list fragments, fulfilling larger allocations becomes harder, and `new` slows further. So I hypothesized the new allocator would get a lot slower.
 
 ```
 ---Summary statistics for New Allocator---
@@ -226,14 +227,14 @@ The arena allocator takes essentially the exact same speed since we're just chan
 
 C++17 introduced execution policies for some algorithms in the standard library. The common policies are:
 
-- `std::execution::seq` — sequenced (default)
-- `std::execution::par` — may execute in parallel
-- `std::execution::par_unseq` — may execute in parallel and unsequenced (vectorization allowed)
-- `std::execution::unseq` — unsequenced (vectorization allowed, not parallel by itself)
+- `std::execution::seq` - sequenced (default)
+- `std::execution::par` - may execute in parallel
+- `std::execution::par_unseq` - may execute in parallel and unsequenced (vectorization allowed)
+- `std::execution::unseq` - unsequenced (vectorization allowed, not parallel by itself)
 
 Using `std::execution::par` indicates the function can safely be executed in parallel; the library may or may not use parallelism. `par_unseq` gives the implementation more freedom (parallel + unsequenced), which can enable both parallelization and vectorization when safe.
 
-This benchmarks several scenarios iterating over coordinates represented as SoA. The first test simply translated positions (add a vector). All execution policies had similar performance, likely because the compiler already vectorized the loop and memory bandwidth limited parallelism. I then added a heavier workload (computing many `sin` calls) to exercise parallel execution. A generic indexed loop (no `for_each`) was included as a zero‑cost abstraction; its performance matches expectations.
+This benchmarks several scenarios iterating over coordinates represented as SoA. The first test simply translated positions (add a vector). All execution policies had similar performance, likely because the compiler already vectorized the loop and memory bandwidth limited parallelism. I then added a heavier workload (computing many `sin` calls) to exercise parallel execution. A generic indexed loop (no `for_each`) was also added as a sanity check. `for_each` is a zero cost abstraction so it should be the same speed.
 
 ```
 ---Summary statistics for Generic Indexed Loop Execution Policy Benchmark---
@@ -267,7 +268,7 @@ Sample standard deviation: 2.23711e+06
 Tests used: 50
 ```
 
-Explicitly allowing unsequenced execution had little effect here, since the compiler already vectorized the loop. A parallel execution policy yielded ≈7.85× speedup, while `par_unseq` improved further to ≈9.2× (≈1.17× faster than `par`).
+Explicitly allowing unsequenced execution had little effect here, since the compiler is smart enough to already vectorize the loop. A parallel execution policy yielded ~7.85x speedup, while `par_unseq` improved further to ~9.2x (~1.17× faster than `par`) which was interesting.
 
 # Ring buffer optimizations and minimizing coherence traffic
 
@@ -298,22 +299,25 @@ This implementation has a hidden performance issue related to cache coherency. M
 
 - Modified: Cacheline is only present in this core's cache and it is dirty (different to main memory)
 - Exclusive: Cacheline is only present in this core's cache and it is clean
-  -- Shared: Cache line is present in multiple cores' caches and is clean (roughly)
+- Shared: Cache line is present in multiple cores' caches and is clean (roughly)
 - Invalid: The cacheline is just invalid / unused
 
 Consider a cacheline in modified state.
 If another core wants to read that data and goes to main memory it will get an outdated copy.
 This is obviously an issue, so we need to transition the cachelines state from modified to shared so the other core can read it.
 In shared state the data should be "clean" so it should get written back to memory.
-Realistically it may just use a cache to cache transfer which is faster like in MOESI.
-The owner is responsible for writing it back to memory and everyone is just viewing it.
-This requires cross‑core communication for cache‑to‑cache transfers, which is slow (tens of cycles) compared to an L1 access (~1–4 cycles).
+In a textbook MESI the cacheline needs to be written back to main memory so it can enter exclusive state from modified.
+Then it can freely transition to shared, but a write back to main memory may take 150 cycles which is an eternity.
 
-If a cache line is Shared and a core wants to modify it, that core must obtain exclusive ownership (an RFO — Request For Ownership). The RFO causes invalidations and cache‑to‑cache transfers, which are relatively slow. These transitions add tens of cycles and can severely impact performance in tight loops.
+Realistically it may just use a cache to cache transfer which is faster like in MOESI.
+The owner is responsible for writing it back to memory and everyone else is just viewing the modified data.
+This requires cross‑core communication for cache‑to‑cache transfers, which is slow (tens of cycles) compared to an L1 access (~1–4 cycles) but fast compared to a main memory write back.
+
+If a cache line is Shared and a core wants to modify it, that core must obtain exclusive ownership through an RFO(Request For Ownership aka Read For Ownership). The RFO requires the core to communicate with other cores, making them invalidate their copies of that cacheline and waiting for their reply. These transitions also take say ~30 cycles or so which can impact performance in tight loops.
 
 Moving back to how this is actually relevant, say thread A is the pusher and thread B is the popper.
 They are running in different physical cores.
-For thread A to push it
+For thread A to push it:
 
 1. Reads write_idx and read_idx to check we can do a push
 2. If we can do a push, do a write to the data vector and increment write_idx
@@ -323,11 +327,12 @@ For thread B to read it
 1. Reads write_idx and read_idx to check if we can do a read
 2. If we can do a read, read from the data vector and increment read_idx
 
-Both threads are doing this concurrently which is leading to some cacheline ping-pong.
+Both threads are doing this concurrently which is leading to some cacheline ping-pong, importantly.
 For example with A we move the write_idx cacheline to a modified state.
 But B needs to read write_idx to check if the queues not empty so it can pop from it.
 But write_idx's cacheline is in exclusive state so we need to move it into a shared state so our core can get a copy.
-This causes cache‑line ping‑pong between cores, which hurts throughput. The same issue occurs for `read_idx`. There is no perfect solution, but techniques exist to minimize inter‑core communication.
+This causes cache‑line ping‑pong between cores, which hurts throughput. The same issue occurs for `read_idx`.
+There is no perfect solution, but techniques exist to minimize inter‑core communication.
 
 To avoid frequent cross‑core reads, keep cached copies of the remote index on a separate cache line. The writer compares `write_idx` with its cached `read_idx`; if `write_idx == cached_read_idx` then refresh the cached value from the consumer. This reduces costly transfers to occasional updates rather than on every push. The popper can use a cached `write_idx` symmetrically.
 
@@ -346,7 +351,7 @@ Sample standard deviation: 4.83165e+06
 Tests used: 100
 ```
 
-Overall, that's about a ≈3× speedup for a 10,000‑size buffer passing 10 million elements, and roughly ≈2× for a 1,000,000‑element buffer passing 100 million elements.
+Overall I found about a ~3x speedup for a 10,000‑size buffer passing 10 million elements, and roughly ~2x for a 1,000,000‑element buffer passing 100 million elements.
 
 ```
 ---Summary statistics for Classic ring buffer benchmark---
@@ -362,7 +367,7 @@ Sample standard deviation: 6.97944e+07
 Tests used: 100
 ```
 
-That's roughly a ≈2× speedup in this larger test. Erik Rigtorp's article claimed larger improvements in some cases (e.g., 20×); actual gains are hardware‑dependent, so results vary by CPU and configuration. Nevertheless, these optimizations consistently produce substantial improvements.
+Erik Rigtorp's article claimed larger improvements of 20x, and this shows actual gains can be very hardware‑dependent, so results vary by CPU and configuration. Nevertheless, these optimizations consistently produce substantial improvements.
 
 # SSO
 
