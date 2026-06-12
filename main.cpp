@@ -230,9 +230,9 @@ void ringBufferImplementations() {
 // }
 
 void allocatorBench() {
-    constexpr static size_t ELEMENTS{500000};
+    constexpr static size_t ELEMENTS{50000};
     constexpr static size_t ITERATIONS{1};
-    constexpr static size_t SAMPLES{100};
+    constexpr static size_t SAMPLES{1000};
 
     auto new_alloc = AllocationBench<Allocator::NEW>(ELEMENTS);
     auto arena_alloc = AllocationBench<Allocator::ARENA>(ELEMENTS);
@@ -241,9 +241,9 @@ void allocatorBench() {
 }
 
 void allocationAndDeletionBench() {
-    constexpr static size_t ELEMENTS{500000};
+    constexpr static size_t ELEMENTS{50000};
     constexpr static size_t ITERATIONS{1};
-    constexpr static size_t SAMPLES{100};
+    constexpr static size_t SAMPLES{1000};
 
     auto new_alloc = AllocationBench<Allocator::NEW, true>(ELEMENTS);
     auto arena_alloc = AllocationBench<Allocator::ARENA, true>(ELEMENTS);
@@ -252,9 +252,9 @@ void allocationAndDeletionBench() {
 }
 
 void allocationAndDeletionAndVariableAllocBench() {
-    constexpr static size_t ELEMENTS{500000};
+    constexpr static size_t ELEMENTS{50000};
     constexpr static size_t ITERATIONS{1};
-    constexpr static size_t SAMPLES{100};
+    constexpr static size_t SAMPLES{1000};
 
     auto new_alloc = AllocationBench<Allocator::NEW, true, true>(ELEMENTS);
     auto arena_alloc = AllocationBench<Allocator::ARENA, true, true>(ELEMENTS);

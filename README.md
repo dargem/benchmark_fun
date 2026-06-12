@@ -182,7 +182,11 @@ Game engines make heavy use of this through using an ECS (entity component syste
 
 # Heap Allocation Costs & Alternatives
 
-Dynamic memory allocation is rightfully though of as fairly expensive. A brief overview on how most system allocators like `new` or `malloc` work is they request a large block of memory from the OS, such as with mmap on linux. It can then split this block into small chunks. It commonly does this through managing a freelist which is essentially a linked list of unallocated chunks of memory. A caller asks the allocator for N bytes of memory, so the allocator traverses the free list to find a suitably sized block. If the block it finds is larger than requested it can split the block, and if it can't find any blocks large enough it can just allocate more memory. As more allocations / deallocations are made fragmentation occurs as free memory gets scattered into small non contiguous chunks. This leads to more time taken for allocations. Compare this to the stack where all you need to do is increment the stack pointer this is obviously a lot more involved. A solution to the high cost is custom allocators such as Arena Allocators which generally have their own tradeoffs. An Arena allocator is very similar to a stack, you allocate memory on construction (typically an excessive amount remember the no reserve vector trick). Then you have a start pointer to this memory and a current pointer. If you allocated a 4 byte object you would simply bump the current pointer up by 4 bytes like a stack.
+Dynamic memory allocation is rightfully though of as fairly expensive. A brief overview on how most system allocators like `new` or `malloc` work is they request a large block of memory from the OS, such as with mmap on linux. It can then split this block into small chunks. It commonly does this through managing a freelist which is essentially a linked list of unallocated chunks of memory. A caller asks the allocator for N bytes of memory, so the allocator traverses the free list to find a suitably sized block. If the block it finds is larger than requested it can split the block, and if it can't find any blocks large enough it can just allocate more memory. As more allocations / deallocations are made, fragmentation occurs as free memory gets scattered into small non contiguous chunks. This means while a free list could cumulatively contain a large amount of memory, a request for 1KB may require a large number of traversals as memory is fragmented into small chunks not large enough for the request.
+
+This leads to more time taken for allocations as it starts taking longer to find free chunks.
+
+Compare this to the stack where all you need to do is increment the stack pointer this is obviously a lot more involved. A solution to the high cost is custom allocators such as Arena Allocators which generally have their own tradeoffs. An Arena allocator is very similar to a stack, you allocate memory on construction (typically an excessive amount remember the no reserve vector trick). Then you have a start pointer to this memory and a current pointer. If you allocated a 4 byte object you would simply bump the current pointer up by 4 bytes like a stack.
 
 ```
 template <typename T>
@@ -199,42 +203,58 @@ T* allocate(size_t n) {
 
 This is an example implementation, this is incredibly simple and quick but it lacks flexibility. For example you cannot free memory you have allocated, you can only keep on advancing the stack pointer. You could "free" memory but it would have to be the last thing allocated LIFO style. This however has some major benefits surprisingly as it ties together the lifetimes of objects. Rather than managing the lifetime of each object, each objects lifetime is tied to the Arena. Calling `reset()` on the arena essentially frees every object. This is also incredibly quick as its just setting the arena's current ptr to the beginning of the "stack". In a game engine for example, each iteration of the game loop renders a frame, and the lifetimes of the objects allocated during the frame can all be discarded at the end of it. An Arena for example could be created at the start of the frame, and all heap allocation far faster using the Arena rather than something like `new`. The complexity of managing lifetimes is erased as the arena is just reset at the end of the frame, freeing every single object in essentially just one operation. You will notice I have allocate require T to be trivially destructible which makes sense because we aren't actually calling the destructor of anything allocated in the arena. If you allocated an object on the arena, where its destruction would release a resource in RAII fashion you could get nasty behaviour.
 
-I ran a benchmark of allocating 500000 objects using my arena impl vs new. This bench here only considered allocation not deletion.
+I ran a benchmark of allocating 50000 4 byte objects using my arena impl vs new. This bench here only considered allocation not deletion.
 
 ```
 ---Summary statistics for New Allocator---
-Sample mean cycles per test: 3.0432e+07
-Confidence interval: 3.01587e+07-3.07053e+07
-Sample standard deviation: 1.37746e+06
-Tests used: 100
+Sample mean cycles per test: 2.46151e+06
+Confidence interval: 2.45673e+06-2.46628e+06
+Sample standard deviation: 76992.5
+Tests used: 1000
 
 ---Summary statistics for Arena Allocator---
-Sample mean cycles per test: 1.2367e+06
-Confidence interval: 1.18802e+06-1.28538e+06
-Sample standard deviation: 245354
-Tests used: 100
+Sample mean cycles per test: 114167
+Confidence interval: 113007-115328
+Sample standard deviation: 18702.6
+Tests used: 1000
 ```
 
-We see a ~24.6x speed increase which is massive but also very expected.
+We see a ~21.6x speed increase which is massive but also very expected.
 If you are heap allocating something you are (hopefully if you don't have a memory leak) freeing it.
-This bench considers allocating 500000 integers and then freeing them all.
+This bench considers allocating 50000 integers and then freeing them all.
 For the Arena allocator remember resetting the arena is an O(1) operation, just changing a pointer.
 
 ```
 ---Summary statistics for New Allocator---
-Sample mean cycles per test: 4.70493e+07
-Confidence interval: 4.67713e+07-4.73274e+07
-Sample standard deviation: 1.40124e+06
-Tests used: 100
+Sample mean cycles per test: 2.82874e+06
+Confidence interval: 2.82396e+06-2.83351e+06
+Sample standard deviation: 76985.6
+Tests used: 1000
 
 ---Summary statistics for Arena Allocator---
-Sample mean cycles per test: 1.24693e+06
-Confidence interval: 1.16295e+06-1.33091e+06
-Sample standard deviation: 423245
-Tests used: 100
+Sample mean cycles per test: 116649
+Confidence interval: 115762-117536
+Sample standard deviation: 14298.2
+Tests used: 1000
 ```
 
-We see a 37.7x speedup now since `new` tanks in performance while the arena allocator is ~same speed.
+We see a 25.25x speedup now since `new` tanks in performance while the arena allocator is ~same speed. But these tests so far have been based on allocation small 4 byte numbers which isn't that realistic. Chances are you are allocating objects of various sizes onto the heap. As a free list gets fragmented, large allocations become harder to fulfill as memory is split into small contiguous chunks. So realistically performance would be worse, to check this I had the benchmark change to allocate memory in a range of [1, 256] bytes inclusive. This was a uniform distribution.
+
+```
+---Summary statistics for New Allocator---
+Sample mean cycles per test: 5.5548e+06
+Confidence interval: 5.53673e+06-5.57288e+06
+Sample standard deviation: 291335
+Tests used: 1000
+
+---Summary statistics for Arena Allocator---
+Sample mean cycles per test: 116631
+Confidence interval: 116099-117164
+Sample standard deviation: 8581.14
+Tests used: 1000
+```
+
+The arena allocator takes essentially the exact same speed since we're just changing how much the current pointer increments. This means larger objects don't take more time to allocate. `new` however is considerably slower, and we have now achieved a 47.6x speedup over `new`.
 
 # Execution Policies
 

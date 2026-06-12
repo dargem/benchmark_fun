@@ -48,7 +48,8 @@ class AllocationBench : public Benchable {
             sizes.resize(n_elements);
             rng.fill_partial_aligned_uint32(sizes.data(), n_elements);
             for (uint32_t& size : sizes) {
-                size >>= 26;  // get 6 bits [0, 63]
+                size >>= 24;  // get 8 bits [0, 255] bytes
+                size += 1;    // To never get 0 byte allocation
             }
         }
     }
@@ -95,7 +96,8 @@ class AllocationBench : public Benchable {
         if constexpr (VariableAllocSizes == true) {
             rng.fill_partial_aligned_uint32(sizes.data(), sizes.size());
             for (uint32_t& size : sizes) {
-                size >>= 26;  // get 6 bits [0, 63]
+                size >>= 24;  // get 8 bits [0, 255]
+                size += 1;    // to never request 0 byte allocation
             }
         }
     }
