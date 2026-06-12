@@ -369,11 +369,14 @@ Tests used: 100
 
 Erik Rigtorp's article claimed larger improvements of 20x, and this shows actual gains can be very hardware‑dependent, so results vary by CPU and configuration. Nevertheless, these optimizations consistently produce substantial improvements.
 
+As an aside alignas(64) does not always cut it since some computers have 128 byte cachelines.
+This is not that extreme of an edge-case, modern Apple Silicon chips like the M series use 128 byte cache lines. The solution to this is through `std::hardware_destructive_interference_size` which is just the minimum offset between two objects needed to avoid false sharing. So aligning an object with that will let it sit in its own cache line.
+
 # SSO
 
 `std::string` differs from a C‑style `char[]` in that it's resizable and often manages a heap allocation (similar to `std::vector`). Allocating small strings on the heap can be costly, so many implementations use SSO (Small String Optimization): small strings are stored directly inside the `std::string` object (commonly in the space otherwise used for the pointer/capacity), avoiding a heap allocation.
 
-Benchmark results (microbenchmark of small string sizes):
+Benchmark results (benchmark of small string sizes):
 
 ```
 ---Summary statistics for String of size 15---
@@ -513,7 +516,7 @@ This is presumably due to the bit packing leading to less cache misses which can
 Using char or uint8_t elements this is ~100000 bytes or 100kb which is > than this cpu's L1 data cache of 32kb.
 Using bit packing this will only be ~12500 bytes which can all fit inside the L1 cache easily.
 Then increasing the number of iterations over this same large array improves speeds further.
-500000 random indexes over the 100000 element array gave these results, where the bitpacking results in good improvements.
+500000 random indexes over the 100000 element array had good improvements from bitpacking.
 Random indexing involves iterating over a vector of size t's which is also interesting,
 this would use up far more memory than the actual array of elements here,
 since this iteration is sequential its prefetched though.
@@ -541,16 +544,22 @@ Tests used: 1000
 
 ```
 
-# Mersenne Twister vs Xoroshiro family RNGs (and a SIMD accelerated one)
+Found this interesting since a lot of people including me rag on bool vectors but its not always as clear cut as expected.
+I still consider it a mistake like most though since the standard library should not use a strange heavily opinionated optimization.
+Especially considering the way it stops this specialization from being a STL container.
+Due to back compatibility reasons it can't be changed though.
 
-Mersenne Twister is often considered the standard RNG to go to but its quite slow.
+# Mersenne Twister (MT19937) vs Xoroshiro family RNGs (and a SIMD accelerated one)
+
+Mersenne Twister is often considered a standard RNG to go to but its quite slow and not good statistically.
+An interesting fact is after observing just 624 iterations of MT19937 you can predict every future generated number.
 Xoroshiro128+ is a RNG that is considered considerably faster with better statistical qualities.
 Both were benchmarked for generating random integers.
 Was expecting xoroshiro128+ to be substantially faster and it is, ~3.95x faster number generation is very welcome.
 Xoroshiro also has better statistical properties.
 
 ```
----Summary statistics for Xoroshiro128+ RNG---
+---Summary statistics for Xoroshiro1Aka large enough alignment that this object will fit in its own cache line.28+ RNG---
 Sample mean cycles per test: 2.41944e+06
 Confidence interval: 2.4054e+06-2.43349e+06
 Sample standard deviation: 123615
@@ -601,7 +610,7 @@ My simd accelerated version gets an incredible ~6.5x speedups over the standard 
 
 # LIKELY / UNLIKELY Attributes and a Branch Prediction tangent
 
-C++20 introduces the `[[likely]]` and `[[unlikely]]` attributes which are hints to the compiler about expected branch probability.
+C++20 introduces the `[[likely]]` and `[[unlikely]]` attributes which are hints to the compiler about the expected probabilities of a branch. This is as strange as it sounds, you can mark an if statement as `[[unlilkely]]` and the compiler can make optimizations assume the other branch is more likely. This is purely for the compiler isn't related directly at least to how the CPU predicts branches for speculative executions.
 
 ```
 if constexpr (A == Attribute::UNLIKELY) {
@@ -617,7 +626,6 @@ This benchmarks 3 scenarios like above, the randomly generated number has a ~95%
 For the number to be equal this was exceedingly rare (1/100000) so it realistically will never happen.
 Evaluating the > condition first would allow short circuiting 95% of the time which skips needing a second evaluation,
 while evaluating the == condition first would basically never short circuit so it would ~always need 2 evaluations.
-<br>
 
 This example uses `[[unlikely]]` and `[[likely]]` to intentionally mis‑hint the compiler.
 If the compiler follows these hints, performance can suffer because it may optimize for the wrong path.
