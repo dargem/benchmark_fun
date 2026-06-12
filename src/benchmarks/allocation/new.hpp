@@ -17,6 +17,11 @@ class NewWrapper {
     }
 
     template <typename T>
+    T* allocate(size_t N) {
+        return new T[N];
+    }
+
+    template <typename T>
     void deallocate(T* ptr) {
         delete ptr;
     }

@@ -230,21 +230,34 @@ void ringBufferImplementations() {
 // }
 
 void allocatorBench() {
-    constexpr static size_t ITERATIONS{500000};
+    constexpr static size_t ELEMENTS{500000};
+    constexpr static size_t ITERATIONS{1};
     constexpr static size_t SAMPLES{100};
 
-    auto new_alloc = AllocationBench<Allocator::NEW>();
-    auto arena_alloc = AllocationBench<Allocator::ARENA>();
+    auto new_alloc = AllocationBench<Allocator::NEW>(ELEMENTS);
+    auto arena_alloc = AllocationBench<Allocator::ARENA>(ELEMENTS);
 
     benchmarks::executeBench(ITERATIONS, SAMPLES, new_alloc, arena_alloc);
 }
 
 void allocationAndDeletionBench() {
-    constexpr static size_t ITERATIONS{500000};
+    constexpr static size_t ELEMENTS{500000};
+    constexpr static size_t ITERATIONS{1};
     constexpr static size_t SAMPLES{100};
 
-    auto new_alloc = AllocationBench<Allocator::NEW, true>();
-    auto arena_alloc = AllocationBench<Allocator::ARENA, true>();
+    auto new_alloc = AllocationBench<Allocator::NEW, true>(ELEMENTS);
+    auto arena_alloc = AllocationBench<Allocator::ARENA, true>(ELEMENTS);
+
+    benchmarks::executeBench(ITERATIONS, SAMPLES, new_alloc, arena_alloc);
+}
+
+void allocationAndDeletionAndVariableAllocBench() {
+    constexpr static size_t ELEMENTS{500000};
+    constexpr static size_t ITERATIONS{1};
+    constexpr static size_t SAMPLES{100};
+
+    auto new_alloc = AllocationBench<Allocator::NEW, true, true>(ELEMENTS);
+    auto arena_alloc = AllocationBench<Allocator::ARENA, true, true>(ELEMENTS);
 
     benchmarks::executeBench(ITERATIONS, SAMPLES, new_alloc, arena_alloc);
 }
@@ -265,6 +278,7 @@ int main() {
         // ringBufferImplementations();
         allocatorBench();
         allocationAndDeletionBench();
+        allocationAndDeletionAndVariableAllocBench();
     } catch (const std::exception& e) {
         std::cout << "Error: " << e.what() << std::endl;
     } catch (...) {
