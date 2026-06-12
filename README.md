@@ -1,38 +1,22 @@
-# benchmarks
+# Benchmarks
 
-some random benchmarks of questionable accuracy but is hopefully interesting
-probably doesn't work on 32 bit systems due to hacky stuff!
-Also contains some info on random performance related C++ language features
+Some random benchmarks of questionable accuracy, but I hope they're interesting.
+This probably doesn't work on 32-bit systems due to some hacky code.
+It also contains information on various performance-related C++ language features.
 
-# Benches!
+# Benches
 
-Seems like standard deviation can be out of wack occasionally.
-Not sure why but probably due to rare events like os jitter that can skew one sample to take far longer.
+The standard deviation can be out of whack occasionally. This is likely due to rare events such as OS jitter that can skew individual samples.
 
-# Reserving a vector 15 gigabytes of capacity
+# Reserving 15 GB of capacity for a vector
 
-For machines with an OS, a process runs inside a virtual address space which is abstracted away by the OS from physical memory addresses.
-This is a necessity to have multiple processes running simultaneously, as each can reside inside their own virtual address space which the OS maps to physical memory addresses.
-On a 64 bit linux system a process is typically allocated a 128 TiB large virtual address space, which mildly eclipses my laptops 16gb of RAM.
-The key to why this works is the OS lazily maps virtual memory addresses to physical addresses, so it doesn't bother mapping it until the program actually accesses that memory.
-<br>
+Processes run in a virtual address space that the OS maps to physical memory. On a 64‑bit Linux system, a process is typically allocated a 128 TiB virtual address space, which if somewhat larger than my laptop's 16 GB of RAM. The key to how this doesn't lead to excessive memory usage is through how the OS lazily maps virtual addresses to physical pages. Essentially memory isn't backed physically by RAM (or disk) until it's actually accessed.
 
-Moving back to the vectors, adding enough elements to a vector can have its size exceed its capacity, this requires the vector to resize.
-This means allocating more memory, then moving all its elements into its new larger space on the heap which is a costly O(n) operation.
-This also breaks reference stability and iterator stability when adding elements, as pushing back could trigger a resize, which moves the address of elements.
-To get around this partially there is a common performance trick to add n objects into say an empty vector.
-This is done by reserving n capacity ahead of time so it resizes once at the start rather than potentially multiple times as elements get pushed to the back of the vector.
-While nice, in many cases the number of elements isn't known ahead of time so guessing k elements may help but if size reaches k+1 a resize will take k costly copies of the object.
-So how can we avoid resizes, without knowing the amount of storage needed ahead of time and without wasting lots of memory?
-<br>
+When a vector grows past its capacity it must resize, allocate more memory, and move all elements into the new space, which is an expensive O(n) operation. Resizing also breaks reference and iterator stability. A common performance trick is to call `reserve(n)` so the vector grows once instead of many times if you know the number of elements to add ahead of time.
 
-The answer is a allocating 15 gigabytes of memory or a similarly excessive amount of memory to the vector.
-Pushing back would be truly constant O(1), additionally references and iterators would stay stable when pushing to the back.
-While there is a pointer to the memory, it hasn't been accessed yet, so while this uses 15 gigabytes of virtual memory, it uses no physical memory!
-<br>
+If you don't know the final size, another trick is to reserve an excessive amount of virtual memory up front (e.g., 15 GB). With such a large amount of memory allocated the vector will never need to resize, so push_back operations become truly O(1) not just amortized O(1). References and iterators also remain stable (for push_back operations at least) and excessive RAM isn't used as the reserved virtual memory isn't backed by RAM until its actually touched.
 
-Below is a test between two vectors, one with a 15 GB reservation and one with no capacity reserved.
-Both vectors get 5 million 8 byte objects (40MB total) pushed onto them.
+Below is a test between two vectors: one with a 15 GB reservation and one with no capacity reserved. Both vectors receive 5 million 8‑byte objects (40 MB) pushed onto them.
 
 ```
 ---Summary statistics for No Reservation Vector---
@@ -48,39 +32,31 @@ Sample standard deviation: 2.74565e+06
 Tests used: 50
 ```
 
-This is ~2.5x faster which is an incredible speedup from avoiding resizing. While in this case the size was known ahead of time as its a test,
-the key point is pushing any (realistic) number of elements doesn't triggers a resize and this hasn't wasted any more memory than required.
-Proof of this is checking top (shows %cpu and memory usage) for either reservation type has both maxing at the same 0.3% memory usage respectively.
-40 MB / 16000 MB (16GB) = 0.25% expected usage for just the push back loop, considering other memory used by the application, and 1 d.p. accuracy top rounding to 0.3% makes sense.
+This is ≈2.5× faster, which is a large speedup from avoiding resizing. While in this case the size was known ahead of time since it's a test, the key point is that pushing any realistic number of elements won't trigger a resize and this hasn't wasted additional memory. This means if you have a vector and you don't know how many objects you need to push to it ahead of time, you could reserve an excessive amount of space without worries and never have to worry about resizes.
+
+Some proof is `top` (shows %CPU and memory usage) reports both reservation types maxing at about 0.3% memory usage. 40 MB / 16,000 MB (16 GB) ≈ 0.25% expected usage for the push-back loop; accounting for other memory used by the application and `top`'s rounding to 1dp, 0.3% is reasonable.
 
 ```
-// compiled using just 15gb reserve vector
+// compiled using 15 GB reserved vector
     PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
   39455 tristan   20   0   15.0g  16884   4144 R 100.0   0.1   0:04.21 benchmarks
 
-// compiled using just no reserve vector
+// compiled using no-reserve vector
     PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
   42979 tristan   20   0   18468  13404   4036 R  94.9   0.1   1:09.86 benchmarks
 ```
 
-This is an interesting output from top. VIRT is the amount of virtual memory the process is using, while RES (resident set size) is the amount of physical RAM the process is actually using at that point in time. As expected the no reserve vector is using up 15gb of virtual memory but as seen the resident set size is small. Increasing memory usage to a few gigabytes so the process is slow, with the no reserve vector you can see that virtual memory usage is no greater than 2x larger than the current RES. This makes perfect sense since compiling it with gcc, vectors have a 2x resize ratio.
+This output from `top` is informative. `VIRT` shows the virtual memory size and `RES` shows the resident set size (physical RAM). The reserved vector shows a large virtual size but a small `RES`. An interesting but expected thing is the no-reserve vector's virtual memory usage is no more than roughly 2× the current `RES`, which makes sense knowing libstdc++ uses a 2x growth strategy.
 
-# Structure of Arrays (SOA) vs Array of Structures (AOS) (SIMD test)
+# Structure of Arrays (SoA) vs Array of Structures (AoS) (SIMD test)
 
-Benchmark is iterating over an effective list of entities.
-An entity consists of the values: attack, defense, health, x, y and z.
-In an iteration it just simply adds x, y and z values by 1.
-An array of structure is just a vector of Entity instances, but a better way to do it can be having a structure of arrays.
-Rather the collection itself is a class, with vectors for each attack, defense, health and etc.
-This can allow vectorization of the code where the CPU performs a single operation on multiple pieces of data in parallel,
-also known as simd (single instruction multiple data).
-This can lead to massive performance increases.
-Cache locality is also arguably better if you only need to iterate over say the coordinates of an entity,
-with AOS it would load the whole entity into the cache.
-If that entity is large thats obviously inefficient and it might be pushing out actually useful stuff.
-Iterating over a float and a long double it would be expected that smaller data types will benefit from SIMD more
-Note sizes are implementation defined though, while they are 4 and 16 bytes on my machine respectively,
-a long double is only guaranteed to be as long as a double for example.
+This benchmark iterates over a list of entities. Each entity contains: `attack`, `defense`, `health`, `x`, `y`, and `z`. The benchmark has each iteration simply increment `x`, `y`, and `z` by 1.
+
+An Array of Structures (AoS) approach is the standard way to think about laying out data. Here it would be typically a `std::vector<Entity>` where the Entity class is say a struct with each of those members. A Structure of Arrays (SoA) layouot stores each field in its own vector (e.g., vectors for `attack`, `defense`, `health` and etc) where index N corresponds to an entity. If when iterating over entities you just want to say check every entities health is > 0, the cache benefits are fairly obvious as you no longer need to load in the entities currently unused data into the cache which would cause thrashing. The second main benefit however is that this enables vectorization, where the CPU is able to perform one operation on multiple pieces of data in parallel. This is called SIMD (single instruction, multiple data) and it leads to massive performance increases.
+
+An example is you have entities which have a velocity and an acceleration field laid out in SoA style. And say 1 second has passed so now we want to have each velocity += acceleration. In a SoA layout this means we have a velocity array and an acceleration array where index N corresponds to an entities velocity and acceleration. We want to use SIMD to accelerate this addition by doing that one addition instruction on multiple entities at once. The compiler can do this but it can also be a bit iffy and not, so we can use SIMD intrinsics which let you use specific CPU instructions without having to actually write assembly. They are surprisingly simple a good guide is [here] (https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#ig_expand=7113,140,119&techs=AVX_ALL).
+
+Data must first be loaded into special vector registers which are far larger than standard ones, for this example we will use 32 byte (256 bit) vector registers. And say the cpu supports AVX2 which most modern cpu's with x86 architecture likely will. Say velocity and acceleration are both doubles (8 bytes), this means we can have one vector register filled with 4 velocities, and another vector register with 4 accelerations. Then we can use `__m256d output = _mm256_add_pd(a, b);` Which will return a vector register which has added each paired velocity and acceleration together. We can then overwrite the 4 contiguous doubles from our original velocity vector with this register and we have successfully used one instruction on 4 pieces of data simultaneously. We can push this further, using single precision floats would let us pack 8 elements rather than 4 per 256 bit register. If your CPU is modern it may have 256 bit vector registers and you could be doing one operation on 16 pieces of data. If your CPU supports vectorization of half precision floats you could be doing one operation on 32 pieces of data simultaneously. If your CPU supports AVX512-BW instruction set you could be using SIMD instructions on data the size of a byte, and doing what would be 64 operations at once with 512 bit vector registers. Note sizes are implementation-defined; on my machine floats, doubles and `long double` are 4, 8 and 16 bytes respectively. `long double` size varies by platform and ABI.
 
 ```
 ---Summary statistics for Array of Structures Iteration over uint8_t---
@@ -96,8 +72,8 @@ Sample standard deviation: 3408.38
 Tests used: 1000
 ```
 
-Unbelievable ~9x speed increases due to SIMD, SOA is way faster here when operating on the 1 byte unsigned integers.
-A more realistic example using floats seeing as these are coordinates.
+About ≈9× speedup due to SIMD: SoA is much faster here when operating on 1‑byte unsigned integers.
+Below is a more realistic example using floats (coordinates).
 
 ```
 ---Summary statistics for Array of Structures Iteration over float---
@@ -113,7 +89,7 @@ Sample standard deviation: 9523.02
 Tests used: 1000
 ```
 
-Still ~3x speed increase which is incredible on the 4 byte floats.
+Still ≈3× speed increase on 4‑byte floats.
 
 ```
 ---Summary statistics for Array of Structures Iteration over double---
@@ -129,10 +105,7 @@ Sample standard deviation: 20420.2
 Tests used: 1000
 ```
 
-Bit slightly under 2x speed increases which is still great for the 8 byte doubles.
-Pattern here is fairly obvious, smaller data types take greater advantage of SIMD.
-SIMD performs operations on multiple pieces of data in the CPU's register at once,
-smaller data types lets the cpu pack more elements in the same register and operate on more data at the same time.
+Slightly under a 2× speed increase for 8‑byte doubles, which is still a solid gain. The pattern is clear: smaller data types generally gain more from SIMD because the CPU can pack more elements into the same SIMD registers and operate on more data in parallel.
 
 ```
 ---Summary statistics for Array of Structures Iteration over long double---
@@ -148,20 +121,12 @@ Sample standard deviation: 372367
 Tests used: 1000
 ```
 
-Performance gains almost completely disappear with the 16 byte long double.
-SOA is still statistically significantly faster (p < 0.05) but its a very minor speed difference.
-The difference could honestly just be due to better cache locality.
-The cpu this was run on is based on the zen 4 architecture which has support for AVX-512 instruction set (512 bit aka 64 byte simd instructions),
-though through a trick double pumping them through 256 bit registers.
-Regardless even using AVX2 instructions for 256 bit registers you would expect to fit 2 long doubles (128 each),
-but there's clearly not a sizeable enough performance increase.
-On x86-64 linux, long double is 80 bit extended precision stored in 16 bytes, 10 data and 6 padding
-(a lot of wasted space but it needs to be 16 byte aligned).
-AVX2 and AVX512 have no support for 80 bit floats, just vectorizing 32 bit and 64 bit floats.
-So the compiler uses scalar instructions and the very minimal performance increases are just due to the better cache locality which is interesting.
+Performance gains largely disappear for 16‑byte `long double`. SoA is still statistically faster (p < 0.05), but the difference is small and may be due to cache locality.
+
+The CPU used here is Zen 4 based. AVX-512 support varies by model and vendor; many consumer Zen 4 parts do not expose AVX-512, while AVX2 (256‑bit) is common. Note that many x86‑64 ABIs represent `long double` as an 80‑bit extended precision value stored in 16 bytes (10 bytes of data + 6 bytes padding) for alignment. AVX2/AVX-512 do not support 80‑bit floats directly, so the compiler often emits scalar code for `long double`, which reduces vectorization benefits.
 
 ```
----Summary statistics for Array of Structures Iteration over 16 bit float---
+---Summary statistics for Array of Structures Iteration over 16‑bit float (half precision)---
 Sample mean cycles per test: 499966
 Confidence interval: 498174-501758
 Sample standard deviation: 28875.4
@@ -176,17 +141,15 @@ Tests used: 1000
 
 <br>
 
-Obviously trying to organize data in a way operations can be vectorized can be very counterintuitive,
-but up to a 10x performance increase is a must have for some performance critical systems.
-Game engines make heavy use of this through using an ECS (entity component system).
+Organizing data for vectorization can be counterintuitive, but up to a 10× performance increase makes it worthwhile for performance‑critical systems. Game engines commonly use ECS (Entity Component System) patterns to exploit these gains.
 
 # Heap Allocation Costs & Alternatives
 
-Dynamic memory allocation is rightfully though of as fairly expensive. A brief overview on how most system allocators like `new` or `malloc` work is they request a large block of memory from the OS, such as with mmap on linux. It can then split this block into small chunks. It commonly does this through managing a freelist which is essentially a linked list of unallocated chunks of memory. A caller asks the allocator for N bytes of memory, so the allocator traverses the free list to find a suitably sized block. If the block it finds is larger than requested it can split the block, and if it can't find any blocks large enough it can just allocate more memory. As more allocations / deallocations are made, fragmentation occurs as free memory gets scattered into small non contiguous chunks. This means while a free list could cumulatively contain a large amount of memory, a request for 1KB may require a large number of traversals as memory is fragmented into small chunks not large enough for the request.
+Dynamic memory allocation is commonly thought of as relatively expensive. Most system allocators (e.g., `new`, `malloc`) request large blocks from the OS (for example using `mmap` on Linux) and split them into smaller chunks. They often manage a free list (a linked list of free chunks). A caller requests N bytes, and the allocator traverses the free list to find a suitable block. If needed, it can split a larger block or request more memory from the OS. Over time, allocations and deallocations can fragment memory into small non‑contiguous chunks, which makes finding a suitably large block slower.
 
 This leads to more time taken for allocations as it starts taking longer to find free chunks.
 
-Compare this to the stack where all you need to do is increment the stack pointer this is obviously a lot more involved. A solution to the high cost is custom allocators such as Arena Allocators which generally have their own tradeoffs. An Arena allocator is very similar to a stack, you allocate memory on construction (typically an excessive amount remember the no reserve vector trick). Then you have a start pointer to this memory and a current pointer. If you allocated a 4 byte object you would simply bump the current pointer up by 4 bytes like a stack.
+By contrast, allocating on the stack is just an increment of the stack pointer, which is much cheaper. A common solution for heap allocation cost is to use custom allocators such as arena allocators. An arena works like a stack: allocate a large block up front (similar to the reserve trick), keep a start pointer and a current pointer, and bump the current pointer by the allocation size.
 
 ```
 template <typename T>
@@ -201,9 +164,9 @@ T* allocate(size_t n) {
 }
 ```
 
-This is an example implementation, this is incredibly simple and quick but it lacks flexibility. For example you cannot free memory you have allocated, you can only keep on advancing the stack pointer. You could "free" memory but it would have to be the last thing allocated LIFO style. This however has some major benefits surprisingly as it ties together the lifetimes of objects. Rather than managing the lifetime of each object, each objects lifetime is tied to the Arena. Calling `reset()` on the arena essentially frees every object. This is also incredibly quick as its just setting the arena's current ptr to the beginning of the "stack". In a game engine for example, each iteration of the game loop renders a frame, and the lifetimes of the objects allocated during the frame can all be discarded at the end of it. An Arena for example could be created at the start of the frame, and all heap allocation far faster using the Arena rather than something like `new`. The complexity of managing lifetimes is erased as the arena is just reset at the end of the frame, freeing every single object in essentially just one operation. You will notice I have allocate require T to be trivially destructible which makes sense because we aren't actually calling the destructor of anything allocated in the arena. If you allocated an object on the arena, where its destruction would release a resource in RAII fashion you could get nasty behaviour.
+This example is simple and fast but lacks flexibility: you can't free individual allocations — you can only advance the pointer, or reset the arena to free everything (LIFO semantics). This ties object lifetimes to the arena: calling `reset()` reclaims all memory in O(1) by resetting the pointer. This pattern is useful for per‑frame allocations in a game engine. Note the `allocate` function requires `T` to be trivially destructible because destructors aren't called for arena allocations; allocating objects with nontrivial destructors that manage resources can produce incorrect behavior.
 
-I ran a benchmark of allocating 50000 4 byte objects using my arena impl vs new. This bench here only considered allocation not deletion.
+I ran a benchmark allocating 50,000 4‑byte objects using my arena implementation vs `new`. This benchmark measured allocation only (no deletion).
 
 ```
 ---Summary statistics for New Allocator---
@@ -219,10 +182,7 @@ Sample standard deviation: 18702.6
 Tests used: 1000
 ```
 
-We see a ~21.6x speed increase which is massive but also very expected.
-If you are heap allocating something you are (hopefully if you don't have a memory leak) freeing it.
-This bench considers allocating 50000 integers and then freeing them all.
-For the Arena allocator remember resetting the arena is an O(1) operation, just changing a pointer.
+We see ≈21.6× speedup, which is expected. If you allocate on the heap you typically also free; this benchmark also considers freeing 50,000 integers. Resetting the arena is an O(1) operation (just change a pointer).
 
 ```
 ---Summary statistics for New Allocator---
@@ -238,7 +198,7 @@ Sample standard deviation: 14298.2
 Tests used: 1000
 ```
 
-We see a 25.25x speedup now since `new` tanks in performance while the arena allocator is ~same speed. But these tests so far have been based on allocation small 4 byte numbers which isn't that realistic. Chances are you are allocating objects of various sizes onto the heap. As a free list gets fragmented, large allocations become harder to fulfill as memory is split into small contiguous chunks. So realistically performance would be worse, to check this I had the benchmark change to allocate memory in a range of [1, 256] bytes inclusive. This was a uniform distribution.
+We see ≈25.25× speedup in this test. To model more realistic behavior, I ran another benchmark where allocation sizes were uniformly distributed in [1, 256] bytes. As the free list fragments, fulfilling larger allocations becomes harder, and `new` slows further.
 
 ```
 ---Summary statistics for New Allocator---
@@ -258,26 +218,16 @@ The arena allocator takes essentially the exact same speed since we're just chan
 
 # Execution Policies
 
-C++ 17 introduces some execution policies which can be used on some range based algorithms in the standard library.
-These execution policies are:
+C++17 introduced execution policies for some algorithms in the standard library. The common policies are:
 
-- std::execution::seq (default sequential iteration)
-- std::execution::par (allows parallel iteration)
-- std::execution::par_unseq (allows parallel and non-sequential iteration)
-- std::execution::unseq (C++20 allows non-sequential but not parallel iteration)
+- `std::execution::seq` — sequenced (default)
+- `std::execution::par` — may execute in parallel
+- `std::execution::par_unseq` — may execute in parallel and unsequenced (vectorization allowed)
+- `std::execution::unseq` — unsequenced (vectorization allowed, not parallel by itself)
 
-To use std::execution::par is to promise the function can be safely executed in parallel.
-So while the implementation is free to use a parallel implementation it is also free not to.
-par_unseq has a stronger guarantee that allows interweaving the execution of multiple function calls in the same thread.
-This can let the code be vectorized and make use of SIMD if it is vectorization safe.
+Using `std::execution::par` indicates the function can safely be executed in parallel; the library may or may not use parallelism. `par_unseq` gives the implementation more freedom (parallel + unsequenced), which can enable both parallelization and vectorization when safe.
 
-This benchmarked a few different scenarios using iteration over coordinates represented as SOA.
-The first version was just a translation on the position by adding a vector.
-All execution policies had the exact same performance, likely because the compiler was already vectorizing it for seq/unseq.
-While parallel iteration was allowed operations were memory bandwidth bound, so the OS didn't parallelize operations.
-This was modified then to do some more heavy (though unrealistic) operations on the data, needing to calc many sine functions.
-A default generic indexed loop was also included which doesn't use a for_each function for the loop.
-This is a zero cost abstraction so should be the same which is the case as seen below.
+This benchmarks several scenarios iterating over coordinates represented as SoA. The first test simply translated positions (add a vector). All execution policies had similar performance, likely because the compiler already vectorized the loop and memory bandwidth limited parallelism. I then added a heavier workload (computing many `sin` calls) to exercise parallel execution. A generic indexed loop (no `for_each`) was included as a zero‑cost abstraction; its performance matches expectations.
 
 ```
 ---Summary statistics for Generic Indexed Loop Execution Policy Benchmark---
@@ -311,19 +261,13 @@ Sample standard deviation: 2.23711e+06
 Tests used: 50
 ```
 
-Explicitly allowing vectorization through the unsequenced execution policy had ~ no impact on speed.
-This makes sense since the compiler should really be able to figure out it can get vectorized in this case.
-A parallel execution policy though has ~7.85x speedup which is quite nice.
-A parallel unsequenced execution policy though lead to further improvements, with it being ~9.2x faster.
-This is ~1.17x faster than the parallel execution policy which is great.
+Explicitly allowing unsequenced execution had little effect here, since the compiler already vectorized the loop. A parallel execution policy yielded ≈7.85× speedup, while `par_unseq` improved further to ≈9.2× (≈1.17× faster than `par`).
 
 # Ring buffer optimizations and minimizing coherence traffic
 
 Inspired by https://rigtorp.se/ringbuffer/.
-For a single producer single consumer queue an efficient data structure is the ring buffer.
-One thread is a producer which pushes data into the FIFO queue while another thread is the consumer popping data off it.
-Being lock free it avoids using any pricy concurrency primitives which is nice.
-It essentially works like this in pseudocode.
+For a single‑producer, single‑consumer queue, a ring buffer is an efficient data structure. One thread produces (pushes) items into the FIFO and another consumes (pops) them. Being lock‑free, it avoids expensive concurrency primitives.
+The basic idea in pseudocode:
 
 ```
 std::vector<DataType> data;
@@ -344,12 +288,11 @@ bool pop(DataType& d) {
 }
 ```
 
-This implementation has a major hidden performance issue based on cache coherency.
-Most CPUs use a cache coherency protocol like MESI which basically states a cacheline must be in one of the following states.
+This implementation has a hidden performance issue related to cache coherency. Most CPUs use a cache coherency protocol (e.g., MESI/MOESI), which defines states for cache lines:
 
 - Modified: Cacheline is only present in this core's cache and it is dirty (different to main memory)
 - Exclusive: Cacheline is only present in this core's cache and it is clean
-- Shared: Cacheline is present in the cache of multiple core's and it is clean (kindof)
+  -- Shared: Cache line is present in multiple cores' caches and is clean (roughly)
 - Invalid: The cacheline is just invalid / unused
 
 Consider a cacheline in modified state.
@@ -358,16 +301,9 @@ This is obviously an issue, so we need to transition the cachelines state from m
 In shared state the data should be "clean" so it should get written back to memory.
 Realistically it may just use a cache to cache transfer which is faster like in MOESI.
 The owner is responsible for writing it back to memory and everyone is just viewing it.
-This requires cross-core communication for the cache to cache transfer which is slow.
-This may take say 30 clock cycles while a L1 cache access is just ~ 1-4 cycle.
+This requires cross‑core communication for cache‑to‑cache transfers, which is slow (tens of cycles) compared to an L1 access (~1–4 cycles).
 
-Once in shared state if we want to modify the cache line, we have to make sure only we have that cacheline.
-Else we may modify our own cacheline, but another core is looking at an outdated version of it which is bad.
-So we know it is in a shared state, and need to do a RFO (request for ownership) to move it into an exclusive state where only we own it.
-Now that it is in exclusive state we are allowed to write to it, transitioning it to modified state.
-This RFO is slow though, also say ~30 clock cycles we are effectively asking every core to invalidate that cacheline if they have a copy.
-Then we have to wait for their confirmation that they have invalidated it before we can move it to exclusive state.
-This whole thing is slow and obviously not ideal at all.
+If a cache line is Shared and a core wants to modify it, that core must obtain exclusive ownership (an RFO — Request For Ownership). The RFO causes invalidations and cache‑to‑cache transfers, which are relatively slow. These transitions add tens of cycles and can severely impact performance in tight loops.
 
 Moving back to how this is actually relevant, say thread A is the pusher and thread B is the popper.
 They are running in different physical cores.
@@ -385,24 +321,11 @@ Both threads are doing this concurrently which is leading to some cacheline ping
 For example with A we move the write_idx cacheline to a modified state.
 But B needs to read write_idx to check if the queues not empty so it can pop from it.
 But write_idx's cacheline is in exclusive state so we need to move it into a shared state so our core can get a copy.
-This results in an expensive cache to cache transfer.
-Then A does another write and needs exclusive control of write_idx to modify it.
-This results in an expensive RFO signal and this ping-pongs back at forth tanking performance.
-This is also happening with popper incrementing read_idx while the pusher needs to read from it.
-There isn't a perfect solution to this but there's ways to minimize the amount of inter-core communication needed.
+This causes cache‑line ping‑pong between cores, which hurts throughput. The same issue occurs for `read_idx`. There is no perfect solution, but techniques exist to minimize inter‑core communication.
 
-To check if we can push/pop elements we need to do this comparison first.
-when write_idx == read_idx the queue is empty (can't pop)
-when ((write_idx + 1) % data.size() == read_idx) the queue is full (can't write without data loss)
-But we can minimize this through using a cached read and write idx that exist on their own cache line.
-The writer compares the write_idx with its cached read_idx.
-We know the real read_idx is ahead of our cache but if the write_idx is behind our cache its also behind the real read_idx.
-So we can just check our own cached copy minimizing cross-core communication.
-If our write_idx is == cached_read_idx then we need to update our cache with the real read_idx.
-So the writer now only needs to do a costly cache to cache transfer with an extra RFO later when the cache_read_idx runs out rather than each push.
-This is the same with the popper which uses a cache_write_idx.
+To avoid frequent cross‑core reads, keep cached copies of the remote index on a separate cache line. The writer compares `write_idx` with its cached `read_idx`; if `write_idx == cached_read_idx` then refresh the cached value from the consumer. This reduces costly transfers to occasional updates rather than on every push. The popper can use a cached `write_idx` symmetrically.
 
-There was a decent amount of variability across program runs despite pinning threads to cores and cycling between tests so take the confidence intervals with more than a grain of salt.
+There was noticeable variability across runs even with pinned threads, so treat confidence intervals cautiously.
 
 ```
 ---Summary statistics for Classic ring buffer benchmark---
@@ -417,8 +340,7 @@ Sample standard deviation: 4.83165e+06
 Tests used: 100
 ```
 
-Basically a ~3x increase in speed for a 10000 size buffer passing through 10 million elements.
-And for a bench with a million element buffer passing through 100 million elements.
+Overall, that's about a ≈3× speedup for a 10,000‑size buffer passing 10 million elements, and roughly ≈2× for a 1,000,000‑element buffer passing 100 million elements.
 
 ```
 ---Summary statistics for Classic ring buffer benchmark---
@@ -434,21 +356,13 @@ Sample standard deviation: 6.97944e+07
 Tests used: 100
 ```
 
-Its getting ~2x ish speedup.
-This was inspired by Erik Rigtorps article which claimed a 20x speedup.
-I only noted a 2x speedup when compiling his benchmark with the same flags.
-Shows optimizations based on hardware effects will vary substantially based on the hardware.
-Regardless its going to lead to a performance improvement.
+That's roughly a ≈2× speedup in this larger test. Erik Rigtorp's article claimed larger improvements in some cases (e.g., 20×); actual gains are hardware‑dependent, so results vary by CPU and configuration. Nevertheless, these optimizations consistently produce substantial improvements.
 
 # SSO
 
-One of the key differences between std::string and a c style string made through a char array is a std::string is resizable.
-It does this through managing a heap allocated resource, working similar to a vector with it resizing to fit the characters that need storage.
-std::string though is often considered badly performant due to this though as it can lead to a lot of costly heap allocations, which is the case but there is a trick for small strings.
-A naively implemented string implementation would look something like a vector, with a pointer to its heap allocated resource and two size_t's, capacity of the resource and current size.
-This is logical but something like std::string = ""; would result in an expensive heap allocation to store just a null terminator.
-The trick involves type punning, what if rather than heap allocating memory, you rather use the 16 bytes from the pointer + capacity to store it.
-Before an explanation, this is an example of how it looks blind when benchmarking.
+`std::string` differs from a C‑style `char[]` in that it's resizable and often manages a heap allocation (similar to `std::vector`). Allocating small strings on the heap can be costly, so many implementations use SSO (Small String Optimization): small strings are stored directly inside the `std::string` object (in the space otherwise used for the pointer/capacity), avoiding a heap allocation.
+
+Benchmark results (microbenchmark of small string sizes):
 
 ```
 ---Summary statistics for String of size 15---
@@ -476,7 +390,7 @@ Sample standard deviation: 9740.29
 Tests used: 300
 ```
 
-This can be seen incredibly cleanly, an increase of size held to 17 bytes from 16 bytes results in a ~2.8x drop in performance!
+You can see the effect clearly: increasing the string size from 16 to 17 bytes causes a ≈2.8× drop in performance due to falling out of the SSO fast path.
 This is a clear drop off between stack and heap allocation "modes", this is called SSO (small string optimization) as you avoid needing a heap allocation for small strings.
 Note that by a string of size 16, I mean it holds 16 bytes total which includes the null terminator, not 16 characters + "hidden" 17th character null terminator.
 So the dropoff starting at 16 shows the String uses at max a 16 byte char stack buffer inside it.
@@ -496,14 +410,9 @@ class String {
 };
 ```
 
-The union member only takes up the space of its largest member which is the 16 byte stackbuf.
-Here this reuses the 8byte capacity field with the 16 byte charbuf.
-This doesn't typepun both data + capacity, just capacity so this "wastes" 8 bytes when its using a heap allocated buffer which only needs 2 size_t's and the pointer.
-A benefit is checking mode is simple, if data points to the stackbuf you are using it, if the data is pointing to something else you have a heap allocated buffer.
-<br>
+The union member only occupies the space of its largest member (the 16‑byte `stackbuf`). This layout reuses the 8‑byte `capacity` field alongside the 16‑byte buffer. It doesn't type‑pun both `data` and `capacity`, only `capacity`, so it "wastes" 8 bytes when using a heap‑allocated buffer (which needs two `size_t` values and a pointer). A benefit is the mode check is simple: if `data` points into `stackbuf`, the string is in SSO mode; otherwise it uses a heap buffer.
 
-There are alternative implementations also like the libc++ one type punning both size_t's and the data pointer for 23 characters of storage and a 24 byte total size.
-A probably inaccurate simplification is below:
+Some implementations (e.g., libc++) use different tricks, type‑punning multiple fields to increase in‑object storage (e.g., 23 characters in a 24‑byte object). A simplified illustration follows:
 
 ```
 class String {
@@ -522,14 +431,7 @@ class String {
 };
 ```
 
-The issue is you need a way to check which mode the string is in, should data be interpreted in stack or heap mode?
-Note even if both size's were 8 bytes so they could get interpreted normally, the string can reserve memory or it could've downsized while having memory allocated prior.
-This can be done through the most insignificant bit of a set address which would overlap with size in stack mode.
-In stack mode this would reduce the state's size can represent down to 127 from 255.
-This is fine though since in stack mode it can only really hold 22 character by the user (23 char's total due to null terminator).
-In heap mode the capacity field would drop to only being able to hold 2^63 states which is still an excessive amount.
-This is a very interesting optimization making use of a lot of tricks.
-A more accurate explanation is [here](https://joellaity.com/2020/01/31/string.html).
+The implementation must distinguish stack vs. heap mode. One common technique encodes the mode in a pointer's low bits or uses a reserved bit in a size field. That may reduce the range of representable sizes in SSO mode (e.g., to 127) but is acceptable since SSO stores only small strings (≈22 characters plus a null terminator). In heap mode, capacities remain large (e.g., up to 2^63). See a deeper explanation at https://joellaity.com/2020/01/31/string.html.
 
 # Sorting to help with branch prediction
 
@@ -557,7 +459,7 @@ Sample standard deviation: 27723.8
 Tests used: 300
 ```
 
-As seen decent ~90% performance increase by a seemingly strange optimization for the hardware.
+As seen, this yields roughly a 90% performance improvement from a hardware‑level optimization.
 
 # Random access of char vs uint8_t vs bool vectors
 
@@ -603,8 +505,7 @@ Then increasing the number of iterations over this same large array improves spe
 Random indexing involves iterating over a vector of size t's which is also interesting,
 this would use up far more memory than the actual array of elements here,
 since this iteration is sequential its prefetched though.
-I assume the cache is managed smartly and since the size_t vector can be predictably prefetched
-it doesn't end up wasting a lot of space in the cache.
+The index vector (size_t) is sequential and benefits from hardware prefetching, so it doesn't consume as much cache as the random accesses themselves.
 
 ```
 
@@ -688,7 +589,7 @@ My simd accelerated version gets an incredible ~6.5x speedups over the standard 
 
 # LIKELY / UNLIKELY Attributes and a Branch Prediction tangent
 
-C++ 20 introduces the [[likely]] and [[unlikely]] attributes which are "hints" to inform the compiler if a path of execution is more or less likely than another.
+C++20 introduces the `[[likely]]` and `[[unlikely]]` attributes which are hints to the compiler about expected branch probability.
 
 ```
 if constexpr (A == Attribute::UNLIKELY) {
@@ -706,10 +607,10 @@ Evaluating the > condition first would allow short circuiting 95% of the time wh
 while evaluating the == condition first would basically never short circuit so it would ~always need 2 evaluations.
 <br>
 
-This uses the [[unlikely]] attribute and [[likely]] attribute to lie to the compiler.
-If it trusts me this would theoretically tank performance as it would evaluate the unlikely condition first thinking that path of execution was "more likely".
+This example uses `[[unlikely]]` and `[[likely]]` to intentionally mis‑hint the compiler.
+If the compiler follows these hints, performance can suffer because it may optimize for the wrong path.
 This is obviously just a hint to the compiler, definitely compiler specific and the compiler could just completely ignore it (this was done using GCC).
-This tests with attributes correct (LIKELY), with attributes wrong (UNLIKELY) and without attributes (DEFAULT Behavior).
+The tests compare three cases: correct hints (`LIKELY`), incorrect hints (`UNLIKELY`), and no hints (default behavior).
 
 ```
 ---Summary statistics for Compiler Branch Prediction with attribute LIKELY---
@@ -818,13 +719,12 @@ Sample standard deviation: 64589.1
 Tests used: 5000
 ```
 
-Doing this with a 70% chance for the first condition, short circuiting happens less and costs from failed branch predictions wil increase.
-We see branch prediction costs have dominated the short circuiting benefit with the branchless version being fastest by a ~2.36x factor compared to 2nd place (likely).
-Furthermore the unlikely version is only ~1.26x slower rather than 2.22x slower as the short circuiting benefits have dropped off and branch misprediction costs start to dominate in time used.
+At a 70% probability for the first condition, short‑circuiting occurs less often and costs from failed branch predictions will increase.
+Branch prediction costs dominate the short‑circuiting benefits: the branchless version is about 2.36× faster than the second‑place (`likely`) variant. The `unlikely` variant is only ~1.26× slower (not ~2.22×) because short‑circuiting advantages diminish while misprediction penalties grow.
 
 # Costs and dangers of unaligned access
 
-On a hardware level, data is physically divided into cache lines which are typically 64 byes long.
+At the hardware level, data is organized into cache lines, which are typically 64 bytes long.
 When the CPU fetches memory from RAM it fetches that memory by the whole cache line, the cache line is the smallest unit of data transferrable between RAM and CPU cache.
 This is good because there is a spacial locality to data access, meaning getting some nearby data with what you want can help minimize future cache misses.
 Too large of a cache line though and you pick up more irrelevant data which could displace actually useful stuff from the cpu's cache so there's a balance.
