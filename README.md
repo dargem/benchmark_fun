@@ -1173,9 +1173,56 @@ int main() {
     CoutWriter coutWriter{};
     PrintfWriter printfWriter{};
 
-    // It looks like polymorphism but its all statically dispatched.
+    // It looks like polymorphism but its all resolved at compile time nicely
     printStuff(coutWriter);
     printStuff(printfWriter);
+}
+```
+
+There are also some interesting ways to reuse code using CRTP.
+Some examples from online is a Singleton "tranformer".
+
+```
+template <typename T>
+class Singleton {
+   public:
+    static T& getInstance() {
+        // Use static instance inside method, lazily evaluated so avoids static
+        // initialization fiasco issues
+        static T instance;
+        return instance;
+    }
+
+   protected:
+    Singleton() = default;
+    Singleton(const Singleton&) = delete;
+    Singleton& operator=(const Singleton&) = delete;
+    Singleton(Singleton&&) = delete;
+    Singleton& operator=(Singleton&&) = delete;
+};
+
+// Through CRTP we can turn A into a singleton (with mini caviats)
+class A : public Singleton<A> {
+   public:
+    double d{};
+    // Note copy construction and etc wouldn't work because the parent has it deleted
+   private:
+    // We need Singleton to be a friend because the Singleton object manages the static instance
+    // And the constructor needs to be private so noone else can create it
+    friend Singleton;
+    A() = default;
+};
+
+int main() {
+    // :: uses parent Singleton<A> getInstance() which just returns A ref
+    A& a = A::getInstance();
+    a.d += 2.5; // We can access class A's members
+
+    A& still_a = A::getInstance();
+    std::cout << still_a.d << '\n';
+    // out prints 2.5
+
+    return 0;
 }
 ```
 
