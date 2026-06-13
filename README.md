@@ -4,7 +4,39 @@ Some random benchmarks of questionable accuracy, but I hope they're interesting.
 This probably doesn't work on 32-bit systems due to some hacky code.
 It also contains information on various performance-related C++ language features.
 
-[Go to CRTP section](#CRTP)
+# Table of Contents
+
+- [Ring Buffer Optimizations Through Minimizing Coherence Traffic](#ring-buffer-optimizations-and-minimizing-coherence-traffic)
+
+- [Curiously Recurring Template Pattern (CRTP)](#ctrp)
+
+- [Structure of Arrays vs Array of Structures (with SIMD)](#structure-of-arrays-soa-vs-array-of-structures-aos-simd-test)
+
+- [Sorting To Help With Branch Prediction](#sorting-to-help-with-branch-prediction)
+
+- [LIKELY / UNLIKELY Attributes & A Branch Prediction Tangent](#likely--unlikely-attributes-and-a-branch-prediction-tangent)
+
+- [Heap Allocation Costs & Alternatives](#heap-allocation-costs--alternatives)
+
+- [Small String Optimization (SSO)](#sso)
+
+- [Reserving 15 GB Of Capacity For A Vector](#reserving-15-gb-of-capacity-for-a-vector)
+
+- [Costs & Dangers Of Unaligned Access](#costs-and-dangers-of-unaligned-access)
+
+- [Mersenne Twister (MT19937) vs Xoroshiro Family RNGs (and a SIMD Accelerated One)](#mersenne-twister-mt19937-vs-xoroshiro-family-rngs-and-a-simd-accelerated-one)
+
+- [Execution Policies](#execution-policies)
+
+- [Random Access Of char vs uint8_t vs bool Vectors](#random-access-of-char-vs-uint8_t-vs-bool-vectors)
+
+- [Padding To Avoid Unaligned Access & Reorganizing Structs For Less Memory Usage](#padding-to-avoid-unaligned-access-and-reorganizing-a-struct-for-less-memory-usage)
+
+- [Empty Base Optimization, Limitations & [[no_unique_address]]](#empty-base-optimization-limitations-and-no_unique_address)
+
+- [Compile Time String Hashing](#compile-time-string-hashing)
+
+- [Exceptions To The As-If Rule](#exceptions-to-the-as-if-rule)
 
 # Benches
 
