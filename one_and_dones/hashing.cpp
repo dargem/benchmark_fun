@@ -3,7 +3,7 @@
 #include <iostream>
 #include <utility>
 
-uint32_t string_hash(const std::string& str) { return 0; }
+uint32_t string_hash(std::string_view) { return 0; }
 
 template <size_t N, size_t... IDXS>
 uint32_t consteval hash_impl(const char (&arr)[N], std::index_sequence<IDXS...>) {
@@ -29,6 +29,8 @@ int main() {
                                 // the print until null terminator overload isn't called
 
     std::cout << string_hash("testing") << '\n';
+    std::string a{"other"};
+    std::cout << string_hash(a) << '\n';  // falls back to runtime version
 
     return 0;
 }
