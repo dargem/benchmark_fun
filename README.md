@@ -1113,6 +1113,72 @@ int consteval hash_impl(const char (&arr)[N], std::index_sequence<IDXS...>) {
 }
 ```
 
+# CTRP
+
+CRTP or curiously recurring template pattern is a curiously recurring pattern using templates.The concept is fairly simple.
+
+```
+template <typename T>
+class X{};
+
+// See the recursion as A has a parent of X specialized by A.
+class A : public X<A> {};
+
+// Can also have another class that uses this with the same base
+class B : public X<B> {};
+```
+
+CTRP has a couple benefits, one of them is keeping the hierarchial benefitits and code reusability of inheritance but with all calls getting resolved at compile time so there is no dynamic dispatch. As such its not true "inheritance" as you can't have say a `std::vector<X<A and B?>>` obviously since they are different types. But you can have something interesting like this.
+
+```
+template <typename T>
+class Writer {
+   public:
+    template <size_t N>
+    void write(const char (&arr)[N]) {
+        // Static cast is fully compile time, we know we can cast this object into a T,
+        // as this object is a T inheriting from Writier<T>
+        static_cast<T*>(this)->writeImpl(arr);
+    }
+};
+
+// Now we can make some writers that use CTRP
+class CoutWriter : public Writer<CoutWriter> {
+   public:
+    template <size_t N>
+    void writeImpl(const char (&arr)[N]) {
+        std::cout << arr << '\n';
+    }
+};
+
+// And another one which does its writeImpl using printf
+class PrintfWriter : public Writer<PrintfWriter> {
+   public:
+    template <size_t N>
+    void writeImpl(const char (&arr)[N]) {
+        printf("%s\n", arr);
+    }
+};
+
+// Now we can make an interesting function like this
+template <typename T>
+void printStuff(Writer<T>& w) {
+    // We know that all Writer<T> will have a write method which delegates to T's writeImpl.
+    // However this is compile time "polymorphism" there is no costly dynamic dispatch.
+    // Additionally the compiler can optimise calls better by inlining and etc as it uses compile time dispatch.
+    w.write("Stuff");
+}
+
+int main() {
+    CoutWriter coutWriter{};
+    PrintfWriter printfWriter{};
+
+    // It looks like polymorphism but its all statically dispatched.
+    printStuff(coutWriter);
+    printStuff(printfWriter);
+}
+```
+
 # plans
 
 - Benchmarks for different types of containers, eg vector vs sparse set vs linked list vs colony/hive
