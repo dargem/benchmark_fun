@@ -4,6 +4,8 @@ Some random benchmarks of questionable accuracy, but I hope they're interesting.
 This probably doesn't work on 32-bit systems due to some hacky code.
 It also contains information on various performance-related C++ language features.
 
+[Go to CRTP section](#CRTP)
+
 # Benches
 
 The standard deviation can be out of whack occasionally. This is likely due to rare events such as OS jitter that can skew individual samples.
@@ -1113,7 +1115,7 @@ int consteval hash_impl(const char (&arr)[N], std::index_sequence<IDXS...>) {
 }
 ```
 
-# CTRP
+# CRTP
 
 CRTP or curiously recurring template pattern is a curiously recurring pattern using templates.The concept is fairly strange.
 
@@ -1158,7 +1160,7 @@ Specializing Foo with T doesn't require T to be a complete type, it just needs t
 
 Essentially `Base<Derived>` can be instantiated with an incomplete `Derived`, so instantiation of the Base specialization doesn't require the definition of Derived which would lead to a recursive loop.
 
-CTRP has a couple benefits, one of them is keeping the hierarchial benefitits and code reusability of inheritance but with all calls getting resolved at compile time so there is no dynamic dispatch. As such its not true "inheritance" as you can't have say a `std::vector<X<A and B?>>` obviously since they are different types. But you can have something interesting like this.
+CRTP has a couple benefits, one of them is keeping the hierarchial benefitits and code reusability of inheritance but with all calls getting resolved at compile time so there is no dynamic dispatch. As such its not true "inheritance" as you can't have say a `std::vector<X<A and B?>>` obviously since they are different types. But you can have something interesting like this.
 
 ```
 template <typename T>
@@ -1176,7 +1178,7 @@ class Writer {
     }
 };
 
-// Now we can make some writers that use CTRP
+// Now we can make some writers that use CRTP
 class CoutWriter : public Writer<CoutWriter> {
    public:
     template <size_t N>
