@@ -1,24 +1,44 @@
+#include <cctype>
 #include <cstdint>
 #include <cstring>
 #include <iostream>
 #include <utility>
 
-uint32_t string_hash(std::string_view) { return 0; }
+int string_hash(std::string_view) { return 0; }
 
+// A really dumb way to do it
 template <size_t N, size_t... IDXS>
-uint32_t consteval hash_impl(const char (&arr)[N], std::index_sequence<IDXS...>) {
-    // A random probably bad hash, sum value of chars in string multiplied by its (idx + 1)
+int consteval hash_impl(const char (&arr)[N], std::index_sequence<IDXS...>) {
+    long long hash{};
 
-    uint32_t total{};
-    auto summer = [&](size_t idx) -> void { total += static_cast<uint32_t>(arr[idx]) * (idx + 1); };
+    long long p = 31, m = 1e9 + 7;
+    long long p_pow = 1;  // Store p ^ i
 
-    (summer(IDXS), ...);
-    return total;
+    auto update = [&](size_t idx) -> void {
+        hash = (hash + (arr[idx] - 'a' + 1) * p_pow) % m;
+        p_pow = (p_pow * p) % m;
+    };
+
+    (update(IDXS), ...);
+    return hash;
 }
 
 template <size_t N>
-uint32_t consteval string_hash(const char (&arr)[N]) {
-    return hash_impl(arr, std::make_index_sequence<N>());
+int consteval string_hash(const char (&arr)[N]) {
+    // Remove null terminator from hash
+
+    // return hash_impl(arr, std::make_index_sequence<N - 1>());
+
+    long long hash{};
+
+    long long p = 31, m = 1e9 + 7;
+    long long p_pow = 1;  // Store p ^ i
+    for (size_t idx{}; idx < N - 1; ++idx) {
+        hash = (hash + (arr[idx] - 'a' + 1) * p_pow) % m;
+        p_pow = (p_pow * p) % m;
+    }
+
+    return hash;
 }
 
 int main() {

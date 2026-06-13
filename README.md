@@ -1053,6 +1053,66 @@ Compiling it with GCC and no optimizations it prints that malloc and free gets c
 However compiling with just -O1 leads to no prints being made.
 This is since the compiler is free to elide allocations even if that allocation has observable side effects.
 
+# Compile time string hashing
+
+This is a method I thought up of for aesthetic compile time string hash. There's some pretty easy methods to do this like having the hash function accept a string literal, i.e. `hash_string<"str">();` and its clear from there. This would stop it from being called with runtime values but its kindof ugly, it also needs a second function for runtime strings. Could be prone to misuse if someone tries to do `hash_string("comp time str")` and forgets to template it also. This is a method where you can do a compile time hash cleanly, everything abstracted away behind the same interface for string literals or std::strings. See below:
+
+```
+std::string a = "hello world";
+int hash = hash_string(a); // returns runtime constant
+
+// But calling it with a string literal directly does a compile time hash
+constexpr int comp_hash = hash_string("hello world");
+```
+
+Since a string literal is just a compile time char array, so we can overload a function to accept either a char array or a string_view /or const std::string& but string_view is more modern. This can be done by having an overload that accepts a c style array by reference.
+
+```
+template <size_t N>
+int consteval string_hash(const char (&arr)[N]) {
+    long long hash{};
+
+    // A generic hash function could be whatever
+    long long p = 31, m = 1e9 + 7;
+    long long p_pow = 1;  // Store p ^ i
+    // N - 1 to remove null terminator
+    for (size_t idx{}; idx < N - 1; ++idx) {
+        hash = (hash + (arr[idx] - 'a' + 1) * p_pow) % m;
+        p_pow = (p_pow * p) % m;
+    }
+
+    return hash;
+}
+
+int string_hash(std::string_view s) {
+    long long hash{};
+    // etc runtime version of same hash function
+    hash{};
+}
+```
+
+This would be another fun way but worse way to do it.
+
+```
+// have hash function delegate to an impl
+// it makes the call `return hash_impl(arr, std::make_index_sequence<N - 1>());`
+template <size_t N, size_t... IDXS>
+int consteval hash_impl(const char (&arr)[N], std::index_sequence<IDXS...>) {
+    long long hash{};
+
+    long long p = 31, m = 1e9 + 7;
+    long long p_pow = 1;  // Store p ^ i
+
+    auto update = [&](size_t idx) -> void {
+        hash = (hash + (arr[idx] - 'a' + 1) * p_pow) % m;
+        p_pow = (p_pow * p) % m;
+    };
+
+    (update(IDXS), ...);
+    return hash;
+}
+```
+
 # plans
 
 - Benchmarks for different types of containers, eg vector vs sparse set vs linked list vs colony/hive
