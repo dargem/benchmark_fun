@@ -1115,18 +1115,48 @@ int consteval hash_impl(const char (&arr)[N], std::index_sequence<IDXS...>) {
 
 # CTRP
 
-CRTP or curiously recurring template pattern is a curiously recurring pattern using templates.The concept is fairly simple.
+CRTP or curiously recurring template pattern is a curiously recurring pattern using templates.The concept is fairly strange.
+
+```
+template <typename Derived>
+class Base{};
+
+// See the recursion as A has a base of Base specialized by A.
+class A : public Base<A> {};
+
+// Can also have another class that uses this with the same base
+class Derived : public Base<Derived> {};
+```
+
+Essentially `Base` is instantiated on `Derived`, and `Derivied` inherits from `Base<Derived>`, which has `Derived` inherit from `Base<Derived>` and yada yada. So if you wanted to define Base you may think this wouldn't compile due to this recursion. Why it works is an interesting feature of how template instantiation works with incomplete types.
 
 ```
 template <typename T>
-class X{};
+struct Foo {
+    void print() { std::cout << "Hello World\n"; }
+};
 
-// See the recursion as A has a parent of X specialized by A.
-class A : public X<A> {};
+// We have omitted a definition
+// This means we have an incomplete type
+struct IncompleteType;
 
-// Can also have another class that uses this with the same base
-class B : public X<B> {};
+int main() {
+    Foo<IncompleteType> a{}; // This is completely fine
+    a.print(); // Compiles and prints fine
+}
 ```
+
+Specializing Foo with T doesn't require T to be a complete type, it just needs to know that it is a type. In our CRTP example Derived is used in its own definition, which means it hasn't been fully defined yet, so Derived is an incomplete type like Undefined. So it goes like this.
+
+- Start generating a definition for Derived
+- Derived inherits from `Base<Derived>`
+- Requires generating an instantiation of Base specialized by Derived
+- Derived has not been instantiated so it is an incomplete type
+- This is fine though, we can instantiate Base with an incomplete type
+- `Base<Derived>` is then simply created
+- Continue defining A
+
+Essentially `Base<Derived>` can be instantiated with an incomplete `Derived`, so instantiation of the Base specialization doesn't require the definition of Derived which would lead to a recursive loop.
 
 CTRP has a couple benefits, one of them is keeping the hierarchial benefitits and code reusability of inheritance but with all calls getting resolved at compile time so there is no dynamic dispatch. As such its not true "inheritance" as you can't have say a `std::vector<X<A and B?>>` obviously since they are different types. But you can have something interesting like this.
 
