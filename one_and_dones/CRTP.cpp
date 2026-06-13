@@ -62,6 +62,15 @@ void printStuff(Writer<T>& w) {
     w.write("Stuff");
 }
 
+template <typename T>
+    requires requires(T t) {
+        t.write("Test String");  // Here we just check it has a method write which accepts at least
+                                 // a string literal
+    }
+void altPrintStuff(T w) {
+    w.write("Stuff");
+}
+
 int main() {
     {
         A& a = A::getInstance();
@@ -86,4 +95,6 @@ int main() {
     // hierarchies and code reuse which is pretty cool.
     printStuff(coutWriter);
     printStuff(printfWriter);
+
+    altPrintStuff(coutWriter);
 }

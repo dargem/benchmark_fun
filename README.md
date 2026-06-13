@@ -1140,6 +1140,10 @@ class Writer {
         // as this object is a T inheriting from Writier<T>
         static_cast<T*>(this)->writeImpl(arr);
     }
+
+    void shared_behaviour() {
+        // We can have some common behaviour among children also since its inheritance obv
+    }
 };
 
 // Now we can make some writers that use CTRP
@@ -1179,8 +1183,21 @@ int main() {
 }
 ```
 
-There are also some interesting ways to reuse code using CRTP.
-Some examples from online is a Singleton "tranformer".
+There would be alternative approaches also to achieve something similar.
+You could use a ducktyping esque implementation thats still statically resolved like this.
+
+```
+// Now we can make an interesting function like this
+template <typename T>
+requires requires(T t) { // Require statements like this have pretty ugly syntax with the nested requires sadly
+    t.write("Test String"); // Here we just check it has a method write which accepts at least a string literal
+}
+void printStuff(T w) {
+    w.write("Stuff");
+}
+```
+
+The benefit behind CRTP though is that you get the structure of inheritance, so you can have a parent be an "interface" that delegates to its child at compile time through templates. I would consider it clearer, and if a class inherits from it it would inforce at compile time that the class has the implementations the base class delegates to it. The other major benefit which this doesn't get is that it provides the ability to reuse code. This is an interesting example of CRTP where class A inheriting from `Singleton<A>` will basically turn it into a singleton.
 
 ```
 template <typename T>
