@@ -8,7 +8,7 @@ It also contains information on various performance-related C++ language feature
 
 - [Ring Buffer Optimizations Through Minimizing Coherence Traffic](#ring-buffer-optimizations-and-minimizing-coherence-traffic)
 
-- [Curiously Recurring Template Pattern (CRTP)](#ctrp)
+- [Curiously Recurring Template Pattern (CRTP)](#crtp)
 
 - [Structure of Arrays vs Array of Structures (with SIMD)](#structure-of-arrays-soa-vs-array-of-structures-aos-simd-test)
 
@@ -1306,6 +1306,32 @@ int main() {
     return 0;
 }
 ```
+
+# Compile Time State
+
+Compile time state can be achieved through stateful metaprogramming, and its an effective way to render your program ifndr. Stateful metaprogramming was not an intentionally created feature of the language, rather it was discovered by combining together multiple tricky features. It is arcane and should probably be ill formed.
+
+```
+constexpr bool N = check_counted<0>();
+Writer<0> a;
+constexpr bool M = check_counted<0>();
+static_assert(N != M); // And this assert passes!
+```
+
+We have the same consteval function return a different value. The way this works involve a few things, but the core idea is that state is stored inside whether a function has a definition.
+
+```
+template <unsigned NextVal, auto Tag = []() {}>
+consteval bool check_counted() {
+    constexpr bool counted_past_value = requires(Reader<NextVal> r) {
+        counted_flag(r);  // will be true if this has a definition
+    };
+
+    return counted_past_value;
+}
+```
+
+This is a more modern way to write it
 
 # plans
 
