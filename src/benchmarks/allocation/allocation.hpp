@@ -106,7 +106,7 @@ class AllocationBench : public Benchable {
     std::vector<std::byte*> a;
     AllocatorTraits<A>::A allocator;
     size_t elements;
-    XoroshiroRNG rng;
+    utils::XoroshiroRNG rng;
     std::vector<uint32_t> sizes;
 };
 

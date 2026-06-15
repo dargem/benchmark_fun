@@ -60,10 +60,10 @@ class StandardBinarySearch : public Benchable {
     }
 
     // Reserve +1 space for eytzinger as it skips the first element
-    alignas(std::max(XoroshiroRNG::REGISTER_BYTE_SIZE,
+    alignas(std::max(utils::XoroshiroRNG::REGISTER_BYTE_SIZE,
                      64uz)) std::array<uint32_t, NUM_ELEMENTS + (C == CachePolicy::EYTZINGER)> data;
     std::array<uint32_t, NUM_SEARCHED> search;
-    XoroshiroRNG rng = XoroshiroRNG();
+    utils::XoroshiroRNG rng = utils::XoroshiroRNG();
 };
 
 }  // namespace benchmarks

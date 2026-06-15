@@ -22,7 +22,7 @@ class Localities : public Benchable {
 
    public:
     Localities(size_t numElements) : Benchable(std::format("{} locality benchmark", type)) {
-        XoroshiroRNG rng{};
+        utils::XoroshiroRNG rng{};
         health.resize(numElements);
         defense.resize(numElements);
         incomingDamage.resize(numElements);
@@ -58,16 +58,22 @@ class Localities : public Benchable {
     void resetBenchmark() override {}
 
    private:
-    std::vector<int, utils::AlignedAllocator<int, XoroshiroRNG::REGISTER_BYTE_SIZE>> health;
-    std::vector<uint32_t, utils::AlignedAllocator<uint32_t, XoroshiroRNG::REGISTER_BYTE_SIZE>>
+    std::vector<int, utils::AlignedAllocator<int, utils::XoroshiroRNG::REGISTER_BYTE_SIZE>> health;
+    std::vector<uint32_t,
+                utils::AlignedAllocator<uint32_t, utils::XoroshiroRNG::REGISTER_BYTE_SIZE>>
         defense;
-    std::vector<uint32_t, utils::AlignedAllocator<uint32_t, XoroshiroRNG::REGISTER_BYTE_SIZE>>
+    std::vector<uint32_t,
+                utils::AlignedAllocator<uint32_t, utils::XoroshiroRNG::REGISTER_BYTE_SIZE>>
         incomingDamage;
-    std::vector<uint32_t, utils::AlignedAllocator<uint32_t, XoroshiroRNG::REGISTER_BYTE_SIZE>>
+    std::vector<uint32_t,
+                utils::AlignedAllocator<uint32_t, utils::XoroshiroRNG::REGISTER_BYTE_SIZE>>
         attack;
-    std::vector<float, utils::AlignedAllocator<float, XoroshiroRNG::REGISTER_BYTE_SIZE>> x_pos;
-    std::vector<float, utils::AlignedAllocator<float, XoroshiroRNG::REGISTER_BYTE_SIZE>> y_pos;
-    std::vector<float, utils::AlignedAllocator<float, XoroshiroRNG::REGISTER_BYTE_SIZE>> z_pos;
+    std::vector<float, utils::AlignedAllocator<float, utils::XoroshiroRNG::REGISTER_BYTE_SIZE>>
+        x_pos;
+    std::vector<float, utils::AlignedAllocator<float, utils::XoroshiroRNG::REGISTER_BYTE_SIZE>>
+        y_pos;
+    std::vector<float, utils::AlignedAllocator<float, utils::XoroshiroRNG::REGISTER_BYTE_SIZE>>
+        z_pos;
 };
 
 }  // namespace benchmarks

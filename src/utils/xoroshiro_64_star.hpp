@@ -47,6 +47,8 @@ IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 #include <cstdint>
 #include <cstring>
 
+namespace utils {
+
 enum class InstructionSet {
     NONE,
     AVX128,  // AKA AVX
@@ -331,6 +333,17 @@ class alignas(InstructionSetTraits<SIMD_INSTRUCTION_SET>::bytes) XoroshiroRNG {
     }
 
     /**
+     * @brief Get a batch of int32_t's in an array container
+     * The number of ints is the SIMD register size in bits / 32.
+     * AVX512 uses 512 bit registers, so batch size is 512 / 32 = 16.
+     * @return std::array<int32_t, BATCH_SIZE>
+     */
+    [[nodiscard]]
+    std::array<int32_t, BATCH_SIZE> get_batch_int32() {
+        return std::bit_cast<std::array<int32_t, BATCH_SIZE>>(advance());
+    }
+
+    /**
      * @brief Get a batch of uint32_t's in raw simd register
      * The number of ints is the SIMD register size in bits / 32.
      * AVX512 uses 512 bit registers, so batch size is 512 / 32 = 16.
@@ -583,4 +596,5 @@ class SequentialXoroshiroRNG {
     uint8_t float_idx{};
 };
 
+}  // namespace utils
 #endif
