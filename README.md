@@ -1348,6 +1348,72 @@ template <unsigned NextVal, auto Tag = []() {}>
 
 Each call to it with an integer, will have the compiler evaluate the Tag default argument by creating a new lambda. Since its a different lambda being made each time these are all unique structural types. This will result in the compiler needing to instantiate `check_counted<0>()` every time its called.
 
+So now we need a way to declare, and later define the `counted_flag(r)` function as whether its got a definition or not is our state. This can be done through friend injection.
+
+```
+template <unsigned N>
+struct Reader {
+    friend auto counted_flag(Reader<N>);
+};
+
+template <unsigned N>
+struct Writer {
+    // defines the counted_flag for the unsigned N
+    friend auto counted_flag(Reader<N>) {}
+};
+```
+
+Consider that the scope of a friend function is the innermost enclosing scope, in this case global scope. So by instantiataing a `Reader<0>` we create a declaration for a `counted_flag(Reader<0>)` function in global scope. The friend function while in global scope it is only accessible through argument dependent lookup.
+
+A quick explalnation is basically with for example `endl(std::cout)`, endl has not had its scope resolved to the std namespace so you wouldn't find the function in the global namesapce. But the compiler uses ADL (argument dependent lookup), where since an argument is in the std namespace, the compiler will additionally lookup functions in the std namespace. As such this compiles fine. We do something similar.
+
+```
+<unsigned N>
+struct Reader {
+    friend auto counted_flag(Reader<N>);
+};
+```
+
+`counted_flag` has to accept an argument of the readers own type so that `counted_flag` can be found through argument dependent lookup by the requires statement below.
+
+```
+constexpr bool counted_past_value = requires(Reader<NextVal> r) {
+    counted_flag(r);  // will be true if this has a definition
+};
+```
+
+And as such all together we get this.
+
+```
+template <unsigned N>
+struct Reader {
+    friend auto counted_flag(Reader<N>);
+};
+
+template <unsigned N>
+struct Writer {
+    // defines the counted_flag for the unsigned N
+    friend auto counted_flag(Reader<N>) {}
+};
+
+template <unsigned NextVal, auto Tag = []() {}>
+consteval bool check_counted() {
+    constexpr bool counted_past_value = requires(Reader<NextVal> r) {
+        counted_flag(r);  // will be true if this has a definition
+    };
+
+    return counted_past_value;
+}
+
+constexpr bool N = check_counted<0>();
+Writer<0> a;
+constexpr bool O = check_counted<0>();
+static_assert(N != O);
+
+constexpr bool P = check_counted<1>();
+static_assert(!P);
+```
+
 # plans
 
 - Benchmarks for different types of containers, eg vector vs sparse set vs linked list vs colony/hive

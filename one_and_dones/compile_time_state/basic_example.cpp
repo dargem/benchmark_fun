@@ -23,10 +23,13 @@ consteval bool check_counted() {
 
 constexpr bool N = check_counted<0>();
 Writer<0> a;
-constexpr bool M = check_counted<0>();
-static_assert(N != M);
+constexpr bool O = check_counted<0>();
+static_assert(N != O);
+
+constexpr bool P = check_counted<1>();
+static_assert(!P);
 
 int main() {
-    std::cout << std::format("N is {}, M is {}\n", N, M);
+    std::cout << std::format("N is {}, M is {}\n", N, O);
     return 0;
 }
