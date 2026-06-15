@@ -1331,7 +1331,22 @@ consteval bool check_counted() {
 }
 ```
 
-This is a more modern way to write it
+This is a more modern way to write it using c++23. Requires statements are commonly used with templates as a more readible version of SFINAE. It effectively will return false if the expression in it is ill formed or it voilates any of the constraints in it. We use it to check if its valid to call` counted_flag(r)`, if `counted_flag(r)` has no definition then it will return falsy, and if it has a definition it will return truthy. But there's a subtle issue with just this, the compiler sees check_counted() is a pure consteval function, so it will probably just evaluate it the first time its called then reuse that result. The solution to force the compiler to reevaluate it through calling a different function each time.
+
+```
+template <unsigned NextVal, unsigned Tag>
+consteval bool check_counted() {
+    // stuff
+}
+```
+
+Now we can call it for the same NextVal, but specify a different Tag, where the Tag does nothing but it forces the compiler to instantiate it again as its templated different. This is kindof messy though having the caller do this, so a very clean way to do it is through having the structural type being an unnamable type.
+
+```
+template <unsigned NextVal, auto Tag = []() {}>
+```
+
+Each call to it with an integer, will have the compiler evaluate the Tag default argument by creating a new lambda. Since its a different lambda being made each time these are all unique structural types. This will result in the compiler needing to instantiate `check_counted<0>()` every time its called.
 
 # plans
 
