@@ -57,7 +57,9 @@ class HeavyXoroshiroRNG {
 };
 
 namespace {
-using Empty = decltype([] {});
+// Don't override this tag
+template <auto Tag = [] {}>
+class Empty {};
 
 template <typename Term, typename... Set>
 concept OneOf = (std::same_as<Term, Set> || ...);
@@ -106,19 +108,19 @@ class BufferedXoroshiroRNG {
         return float_buffer[float_idx++];
     }
 
-   private:
+   public:
     XoroshiroRNG rng;
 
     // We want to be able to conditionally "disable" a member if its not templated with it
     using UINT_ARR =
         std::conditional_t<OneOf<uint32_t, Capabilities...> || OneOf<int32_t, Capabilities...>,
-                           std::array<uint32_t, XoroshiroRNG::BATCH_SIZE>, Empty>;
+                           std::array<uint32_t, XoroshiroRNG::BATCH_SIZE>, Empty<>>;
     using UINT_INDEX =
         std::conditional_t<OneOf<uint32_t, Capabilities...> || OneOf<int32_t, Capabilities...>,
-                           uint8_t, Empty>;
+                           uint8_t, Empty<>>;
     using FLOAT_ARR = std::conditional_t<OneOf<float, Capabilities...>,
-                                         std::array<float, XoroshiroRNG::BATCH_SIZE>, Empty>;
-    using FLOAT_INDEX = std::conditional_t<OneOf<float, Capabilities...>, uint8_t, Empty>;
+                                         std::array<float, XoroshiroRNG::BATCH_SIZE>, Empty<>>;
+    using FLOAT_INDEX = std::conditional_t<OneOf<float, Capabilities...>, uint8_t, Empty<>>;
 
     [[no_unique_address]] UINT_ARR raw_uint32_t_buffer;
     [[no_unique_address]] FLOAT_ARR float_buffer;
@@ -152,4 +154,10 @@ int main() {
         sizeof(utils::BufferedXoroshiroRNG<uint32_t>), sizeof(utils::BufferedXoroshiroRNG<float>),
         sizeof(utils::BufferedXoroshiroRNG<uint32_t, float>), sizeof(utils::BufferedXoroshiroRNG<>),
         sizeof(utils::XoroshiroRNG));
+
+    std::cout << offsetof(utils::BufferedXoroshiroRNG<>, rng) << '\n';
+    std::cout << offsetof(utils::BufferedXoroshiroRNG<>, raw_uint32_t_buffer) << '\n';
+    std::cout << offsetof(utils::BufferedXoroshiroRNG<>, float_buffer) << '\n';
+    std::cout << offsetof(utils::BufferedXoroshiroRNG<>, raw_idx) << '\n';
+    std::cout << offsetof(utils::BufferedXoroshiroRNG<>, float_idx) << '\n';
 }
