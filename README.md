@@ -1030,6 +1030,8 @@ Even if UINT_ARR is a class with no members (0 bytes size), it is a member of ou
 But there's one additional trick to this. EBO and `[[no_unique_address]]` while they allow overlapping empty objects with the first non static member, you cannot have 2 distinct sub-objects of the same type at the same memory address.
 
 ```
+struct Empty{};
+
 struct IncorrectBaseOptimization : Empty {
     Empty e;
     std::byte b;
@@ -1037,7 +1039,28 @@ struct IncorrectBaseOptimization : Empty {
 static_assert(sizeof(IncorrectBaseOptimization) == 3);
 ```
 
-Here's an interesting example, EBO fails to apply because the first non static member is of type Empty, having the base class Empty share the same address would violate this. As such it gets tacked onto the end and takes up an additional byte of space so this struct takes 3 bytes.
+Here's an interesting example, EBO fails to apply because the first non static member is of type Empty, having the base class Empty share the same address would violate this. As such it gets tacked onto the end and takes up an additional byte of space so this struct takes 3 bytes. My first implementation of my storage specialization ran into this problem as I used a `using Empty = decltype([]{});` to get an empty class. My issue was with this.
+
+```
+using FLOAT_ARR = std::conditional_t<OneOf<float, Capabilities...>, std::array<float, XoroshiroRNG::BATCH_SIZE>, Empty>;
+using FLOAT_INDEX = std::conditional_t<OneOf<float, Capabilities...>, uint8_t, Empty>;
+[[no_unique_address]] UINT_ARR uint32_t_buffer;
+[[no_unique_address]] UINT_INDEX uint32_t_idx{};
+```
+
+If float is not one of capabilities, this means both uint32_t buffer and uint32_t_idx are both of the same Empty class.
+So while the first Empty can be overlaid with the first non static data member, overlaying the second Empty would have two sub-objects of the same type at the same address. In my implementation I observed using `offsetof` was the first Empty object would be at 0 offset, but every other Empty object after had a unique memory address because they couldn't share a memory address.
+
+A simple solution would be giving Empty an int template to generate a new class for each empty member. Replacing each Empty with `decltype([]{})` in my type aliases would also work but these are verbose and semantically aesthetic. My solution was a trick I learnt from stateful metaprogramming to force the compiler to generate a new class from the template each time it is called.
+
+```
+template <auto Tag = [] {}>
+class Empty {};
+
+static_assert(!std::same_as<Empty<>, Empty<>>); // This passes
+```
+
+Declaring a type of Empty<> results in Empty's Tag template being assigned to the default structural type which is a lambda. The key to this is that with each declaration of Empty<> the compiler generates a new lambda which Tag is assigned to. Lambda is a closure type, and each generated closure type is unique to any other type. This means both Empty's are specialized with completely different types despite the syntax being identical. So I changed to using this need implementation of Empty, and now each empty buffer or index has a completely different type so it is valid for all of them to share the same memory address.
 
 # Exceptions to the as-if rule
 
