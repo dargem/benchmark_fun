@@ -936,7 +936,7 @@ struct FailedBaseOptimization : Empty {
 static_assert(sizeof(FailedBaseOptimization) == 2);
 ```
 
-Another interesting thing is empty base optimization fails if the first non static member (whom address it overlaps) is the same type, or has a base which is the same type as that member.
+Another interesting thing is empty base optimization fails if the first non static member (whom address it overlaps) is the same type, or has a base which is the same type as that member. This is because you can't have two objects of the same type at the same address (even if both have no unique address).
 
 ```
 struct CorrectBaseOptimization : Empty {
@@ -970,6 +970,48 @@ This allows the cutting of one byte from this struct which is good since it does
 This is interesting though that its been added as an attribute, as compilers are allowed to ignore attributes.
 This means the memory layout of objects could be dependent on compiler which is somewhat messy.
 GCC and CLANG will generally follow it, but MSVC always ignores it due to it breaking ABI as it changes object layouts.
+
+As an aside additionally using no unique address on a member which isn't empty (like an int) will just be ignored by the compiler as it does space.
+
+# Zero Cost Compile Time Storage Specialization
+
+This technique I thought of makes some very interesting use of `[[no_unique_address]]` paired with conditional types, variadic templates and requirements. Read the above statement on how EBO and no unique address works then the rest should become evident. Recently I created a SIMD accelerated RNG that would generate a vector register sized array of random numbers (say 64 bytes but generally depends on hardware). Most users though only need to request say a 4 byte integer, float or double though, so to facilitate this I created a wrapper that contains buffers of elements, which it dispenses to consumers and refills once used. But the space cost of the wrapper is substantial, holding an array 64 bytes for ints, a second array for floats and a third for doubles is expensive. While I could have the wrapper use some bit manipulation to convert the random int into a `[0, 1]` float, my SIMD accelerated RNG uses vector instructions to do this in batches so it would lose in performance. Another alternative would be using one array which holds an internal state to check if its holding ints/doubles/or floats but this would lead to extra branching on every access hurting performance. Additionally a large number of callers when making the wrapper will likely only want to say generate floats/or ints so they would pay a space penalty for an abstraction that should be zero cost. My solution was having callers template my buffered rng with a variadic template of the exact types they wanted to generate. This lead to two issues, I would need a way to:
+
+- Conditionally enable member functions based on membership of their type generated in the variadic template
+- Conditionally enable the members of a class based on its variadic argument
+
+The first issue is quite forward using SFINAE like std::enable_if or more modernly with requirements (part of C++ 20's Concepts).
+
+```
+// To check membership of a type in a variadic template we can use fold expressions
+template <typename Term, typename... Set>
+concept OneOf = (std::same_as<Term, Set> || ...);
+
+// Capabilities are the types our RNG can produce, we need to limit these to what we actually can produce. We can do this with a fold expression using our concept.
+template <typename... Capabilities>
+    requires(OneOf<Capabilities, uint32_t, int32_t, float, double> && ...)
+class BufferedXoroshiroRNG {
+
+    // etc an example get_float method check
+    float get_float()
+        // Only enabled if float is one of Capabilities
+        requires OneOf<float, Capabilities...>
+    {
+        // A distribution of random bits for a float, would not get you a uniform distribution
+        // To get a uniform [0, 1) need to set sign 0 and exponent to 127 (0 after offset)
+        if (float_idx == XoroshiroRNG::BATCH_SIZE) {
+            float_idx = 0;
+            float_buffer = rng.get_batch_floats();
+        }
+
+        return float_buffer[float_idx++];
+    }
+
+    // ... continues
+}
+```
+
+This is fairly straightforward but things become difficult when it comes to only creating the float_buffer and float_idx members when float is one of capabilities. 
 
 # Exceptions to the as-if rule
 

@@ -108,7 +108,7 @@ class BufferedXoroshiroRNG {
         return float_buffer[float_idx++];
     }
 
-   public:
+   public:  // public here just to allow member access for this demo
     XoroshiroRNG rng;
 
     // We want to be able to conditionally "disable" a member if its not templated with it
