@@ -978,7 +978,7 @@ As an aside additionally using no unique address on a member which isn't empty (
 This technique I thought of makes some very interesting use of `[[no_unique_address]]` paired with conditional types, variadic templates and requirements. Read the above statement on how EBO and no unique address works then the rest should become evident. Recently I created a SIMD accelerated RNG that would generate a vector register sized array of random numbers (say 64 bytes but generally depends on hardware). Most users though only need to request say a 4 byte integer, float or double though, so to facilitate this I created a wrapper that contains buffers of elements, which it dispenses to consumers and refills once used. But the space cost of the wrapper is substantial, holding an array 64 bytes for ints, a second array for floats and a third for doubles is expensive. While I could have the wrapper use some bit manipulation to convert the random int into a `[0, 1]` float, my SIMD accelerated RNG uses vector instructions to do this in batches so it would lose in performance. Another alternative would be using one array which holds an internal state to check if its holding ints/doubles/or floats but this would lead to extra branching on every access hurting performance. Additionally a large number of callers when making the wrapper will likely only want to say generate floats/or ints so they would pay a space penalty for an abstraction that should be zero cost. My solution was having callers template my buffered rng with a variadic template of the exact types they wanted to generate. This lead to two issues, I would need a way to:
 
 - Conditionally enable member functions based on membership of their type generated in the variadic template
-- Conditionally enable the members of a class based on its variadic argument
+- Conditionally enable the members of a class based on its variadic template
 
 The first issue is quite forward using SFINAE like std::enable_if or more modernly with requirements (part of C++ 20's Concepts).
 
@@ -997,8 +997,6 @@ class BufferedXoroshiroRNG {
         // Only enabled if float is one of Capabilities
         requires OneOf<float, Capabilities...>
     {
-        // A distribution of random bits for a float, would not get you a uniform distribution
-        // To get a uniform [0, 1) need to set sign 0 and exponent to 127 (0 after offset)
         if (float_idx == XoroshiroRNG::BATCH_SIZE) {
             float_idx = 0;
             float_buffer = rng.get_batch_floats();
@@ -1011,7 +1009,35 @@ class BufferedXoroshiroRNG {
 }
 ```
 
-This is fairly straightforward but things become difficult when it comes to only creating the float_buffer and float_idx members when float is one of capabilities. 
+This is fairly straightforward but things become difficult when it comes to only creating the float_buffer and float_idx members when float is one of capabilities. An interesting solution I thought of involves conditional types and `[[no_unique_address]]`.
+
+```
+// Don't override this tag
+template <auto Tag = [] {}>
+class Empty {};
+
+// We want to be able to conditionally "disable" a member if its not templated with it
+// FLOAT_ARR is a type alias, if float is in Capabilities it will be an array, else an Empty<>
+using FLOAT_ARR = std::conditional_t<OneOf<float, Capabilities...>, std::array<float, XoroshiroRNG::BATCH_SIZE>, Empty<>>;
+using FLOAT_INDEX = std::conditional_t<OneOf<float, Capabilities...>, uint8_t, Empty<>>;
+
+[[no_unique_address]] UINT_ARR uint32_t_buffer;
+[[no_unique_address]] UINT_INDEX uint32_t_idx{};
+```
+
+Even if UINT_ARR is a class with no members (0 bytes size), it is a member of our class so it is guaranteed a unique memory address according to the standard so it will take 1 byte. A common way to avoid wasted space is empty base optimization, which essentially says an empty base class isn't guaranteed a unique memory address. This is quite useful, std::vector for example internally inherits from a memory allocator. The default allocator is stateless but due to EBO it doesn't need a unique memory address so no unnecessary memory is used. But this approach isn't suitable here since our buffer and the idx is a member. C++ 20 however introduces the attribute `[[no_unique_address]]`, which allows you to indicate to the compiler that a non static member does not need a unique address. This allows it to overlap a 0 byte non static member with the address of the first non static member. If you use `[[no_unique_address]]` on an object that takes space however (e.g. our buffer or idx into it) the compiler will just ignore the attribute. As such we have now conditionally enabled members of our class based on its template at zero excess space cost.
+
+But there's one additional trick to this. EBO and `[[no_unique_address]]` while they allow overlapping empty objects with the first non static member, you cannot have 2 distinct sub-objects of the same type at the same memory address.
+
+```
+struct IncorrectBaseOptimization : Empty {
+    Empty e;
+    std::byte b;
+};
+static_assert(sizeof(IncorrectBaseOptimization) == 3);
+```
+
+Here's an interesting example, EBO fails to apply because the first non static member is of type Empty, having the base class Empty share the same address would violate this. As such it gets tacked onto the end and takes up an additional byte of space so this struct takes 3 bytes.
 
 # Exceptions to the as-if rule
 
@@ -1455,6 +1481,8 @@ static_assert(N != O);
 constexpr bool P = check_counted<1>();
 static_assert(!P);
 ```
+
+WIP
 
 # plans
 
