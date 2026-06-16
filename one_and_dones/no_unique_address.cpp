@@ -1,4 +1,8 @@
-#include "utils/xoroshiro_64_star.hpp"
+#include <cstdint>
+#include <format>
+#include <iostream>
+
+#include "src/utils/xoroshiro_64_star.hpp"
 
 namespace utils {
 
@@ -63,12 +67,11 @@ template <typename... Capabilities>
     requires(OneOf<Capabilities, uint32_t, int32_t, float> && ...)
 class BufferedXoroshiroRNG {
    public:
-    BufferedXoroshiroRNG(uint32_t seed = 0xcafef00dU) :
-            rng(seed),
-            raw_uint32_t_buffer(rng.get_batch_uint32()),
-            float_buffer(rng.get_batch_floats()) {}
+    BufferedXoroshiroRNG(uint32_t seed = 0xcafef00dU) : rng(seed) {}
 
-    uint32_t get_uint32() {
+    uint32_t get_uint32()
+        requires OneOf<uint32_t, Capabilities...>
+    {
         if (raw_idx == XoroshiroRNG::BATCH_SIZE) {
             raw_idx = 0;
             raw_uint32_t_buffer = rng.get_batch_uint32();
@@ -77,7 +80,9 @@ class BufferedXoroshiroRNG {
         return raw_uint32_t_buffer[raw_idx++];
     }
 
-    int32_t get_int32() {
+    int32_t get_int32()
+        requires OneOf<int32_t, Capabilities...>
+    {
         // We can share the raw bits used with the uint buffer
         if (raw_idx == XoroshiroRNG::BATCH_SIZE) {
             raw_idx = 0;
@@ -88,7 +93,9 @@ class BufferedXoroshiroRNG {
         return std::bit_cast<int32_t>(raw_uint32_t_buffer[raw_idx++]);
     }
 
-    float get_float() {
+    float get_float()
+        requires OneOf<float, Capabilities...>
+    {
         // A distribution of random bits for a float, would not get you a uniform distribution
         // To get a uniform [0, 1) need to set sign 0 and exponent to 127 (0 after offset)
         if (float_idx == XoroshiroRNG::BATCH_SIZE) {
@@ -120,3 +127,29 @@ class BufferedXoroshiroRNG {
 };
 
 }  // namespace utils
+
+template <typename T>
+concept HasFloat = requires(T t) { t.get_float(); };
+
+template <typename T>
+concept HasUint32 = requires(T t) { t.get_uint32(); };
+
+template <typename T>
+concept HasInt32 = requires(T t) { t.get_int32(); };
+
+static_assert(HasFloat<utils::BufferedXoroshiroRNG<float>> &&
+              !HasUint32<utils::BufferedXoroshiroRNG<float>> &&
+              !HasInt32<utils::BufferedXoroshiroRNG<float>>);
+
+static_assert(HasFloat<utils::BufferedXoroshiroRNG<float, uint32_t>> &&
+              HasUint32<utils::BufferedXoroshiroRNG<float, uint32_t>> &&
+              !HasInt32<utils::BufferedXoroshiroRNG<float, uint32_t>>);
+
+int main() {
+    std::cout << std::format(
+        "uint32 buffered size is {}\n float buffered size is {}\n uint and float buffered size is "
+        "{}\n nothing buffered size is {}\n raw XoroshiroRNG size is {}\n",
+        sizeof(utils::BufferedXoroshiroRNG<uint32_t>), sizeof(utils::BufferedXoroshiroRNG<float>),
+        sizeof(utils::BufferedXoroshiroRNG<uint32_t, float>), sizeof(utils::BufferedXoroshiroRNG<>),
+        sizeof(utils::XoroshiroRNG));
+}
