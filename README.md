@@ -12,6 +12,8 @@ It also contains information on various performance-related C++ language feature
 
 - [Structure of Arrays vs Array of Structures (with SIMD)](#structure-of-arrays-soa-vs-array-of-structures-aos-simd-test)
 
+- [Zero Cost Compile Time Storage Specialization](#zero-cost-compile-time-storage-specialization)
+
 - [Sorting To Help With Branch Prediction](#sorting-to-help-with-branch-prediction)
 
 - [LIKELY / UNLIKELY Attributes & A Branch Prediction Tangent](#likely--unlikely-attributes-and-a-branch-prediction-tangent)
