@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <queue>
+#include <string_view>
 
 namespace benchmarks {
 
@@ -23,6 +24,10 @@ class MutexQueue {
         q.pop();
         return true;
     }
+
+    void reset() {}
+
+    static constexpr std::string_view NAME = "Mutex Queue";
 
    private:
     std::mutex m;

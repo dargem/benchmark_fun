@@ -9,7 +9,7 @@ namespace benchmarks {
 static inline uint32_t rotl_scalar(const uint32_t x, int k) { return (x << k) | (x >> (32 - k)); }
 
 // bad practice but just for this for shared buffer
-alignas(XoroshiroRNG::REGISTER_BYTE_SIZE) static std::array<uint32_t, 100000> arr;
+alignas(utils::XoroshiroRNG::REGISTER_BYTE_SIZE) static std::array<uint32_t, 100000> arr;
 
 class ScalarXoroshiro64Star {
     uint32_t s[2] = {123456789u, 987654321u};
@@ -98,7 +98,7 @@ class Xoroshiro64BufferedArrayFill : public Benchable {
 
    private:
     volatile uint32_t sink;
-    SequentialXoroshiroRNG rng = SequentialXoroshiroRNG();
+    utils::SequentialXoroshiroRNG rng = utils::SequentialXoroshiroRNG();
     // std::array<uint32_t, N> arr{};
 };
 
@@ -119,7 +119,7 @@ class Xoroshiro64SIMDArrayFill : public Benchable {
 
    private:
     volatile uint32_t sink;
-    XoroshiroRNG rng = XoroshiroRNG();
+    utils::XoroshiroRNG rng = utils::XoroshiroRNG();
     // alignas(XoroshiroRNG::REGISTER_BYTE_SIZE) std::array<uint32_t, N> arr{};
 };
 

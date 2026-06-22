@@ -14,7 +14,7 @@
 namespace benchmarks {
 
 template <typename Queue>
-    requires requires(Queue q, int a) {  // Beautiful concepts syntax
+    requires requires(Queue q, int a, size_t b) {  // Beautiful concepts syntax
         { q.push(a) } -> std::convertible_to<bool>;
         { q.pop(a) } -> std::convertible_to<bool>;
         q.reset();
@@ -23,7 +23,7 @@ template <typename Queue>
 class MPMCQueueTester : public Benchable {
    public:
     MPMCQueueTester(size_t queueSize) :
-            Benchable(std::format("{} benchmark", std::string(Queue::NAME)), q(queueSize)) {}
+            Benchable(std::format("{} benchmark", std::string(Queue::NAME))), q(queueSize) {}
 
     void runBenchmark(size_t iterations) override {
         std::atomic<int> ready{};
@@ -52,12 +52,12 @@ class MPMCQueueTester : public Benchable {
             }
         };
 
-        popper0 = std::thread(pop(2));
-        popper1 = std::thread(pop(4));
-        popper2 = std::thread(pop(6));
-        pusher0 = std::thread(push(8));
-        pusher1 = std::thread(push(10));
-        pusher2 = std::thread(push(12));
+        popper0 = std::thread([&]() { pop(2); });
+        popper1 = std::thread([&]() { pop(4); });
+        popper2 = std::thread([&]() { pop(6); });
+        pusher0 = std::thread([&]() { push(8); });
+        pusher1 = std::thread([&]() { push(10); });
+        pusher2 = std::thread([&]() { push(12); });
 
         while (ready.load(std::memory_order_acquire) != 6);
         start.store(true, std::memory_order_release);  // Start trigger

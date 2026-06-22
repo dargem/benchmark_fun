@@ -1,6 +1,8 @@
 #include <iostream>
 #include <stdfloat>
 
+#include "src/benchmarks/MPMC/MPMC_bencher.hpp"
+#include "src/benchmarks/MPMC/locked.hpp"
 #include "src/benchmarks/SOA_AOS/structures.hpp"
 #include "src/benchmarks/SSO/small_string_optimisation.hpp"
 #include "src/benchmarks/alignment/alignment.hpp"
@@ -22,6 +24,7 @@
 #include "src/benchmarks/weird_vector/reserve_vector.hpp"
 #include "src/stats/anovas.hpp"
 
+
 using benchmarks::AllocationBench;
 using benchmarks::Allocator;
 using benchmarks::AOS;
@@ -34,6 +37,8 @@ using benchmarks::BufferTester;
 using benchmarks::ExecutionPolicies;
 using benchmarks::MersenneTwister;
 using benchmarks::MersenneTwisterArrayFill;
+using benchmarks::MPMCQueueTester;
+using benchmarks::MutexQueue;
 using benchmarks::Policy;
 using benchmarks::ReservationSize;
 using benchmarks::SOA;
@@ -262,6 +267,16 @@ void allocationAndDeletionAndVariableAllocBench() {
     benchmarks::executeBench(ITERATIONS, SAMPLES, new_alloc, arena_alloc);
 }
 
+void MPMCQueueBench() {
+    constexpr static size_t SIZE{50000};
+    constexpr static size_t ITERATIONS{100000};
+    constexpr static size_t SAMPLES{1000};
+
+    auto mutexQueue = MPMCQueueTester<MutexQueue>(SIZE);
+
+    benchmarks::executeBench(ITERATIONS, SAMPLES, mutexQueue);
+}
+
 int main() {
     try {
         // runRNGBenchmark();
@@ -276,9 +291,10 @@ int main() {
         // arrayFill();
         // binarySearchLayouts();
         // ringBufferImplementations();
-        allocatorBench();
-        allocationAndDeletionBench();
-        allocationAndDeletionAndVariableAllocBench();
+        // allocatorBench();
+        // allocationAndDeletionBench();
+        // allocationAndDeletionAndVariableAllocBench();
+        MPMCQueueBench();
     } catch (const std::exception& e) {
         std::cout << "Error: " << e.what() << std::endl;
     } catch (...) {
