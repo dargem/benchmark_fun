@@ -32,7 +32,8 @@ class BufferTester : public Benchable {
 
         // Can set environmental variables to avoid recompiling
         const int popCpu = getEnvCpu("BENCH_POP_CPU", 0);
-        const int pushCpu = getEnvCpu("BENCH_PUSH_CPU", 3);
+        const int pushCpu = getEnvCpu("BENCH_PUSH_CPU", 2);
+        pinThread(4);
 
         popper = std::thread([&, iterations] {
             pinThread(popCpu);
