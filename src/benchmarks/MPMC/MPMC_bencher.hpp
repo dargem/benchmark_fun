@@ -8,6 +8,7 @@
 #include <format>
 #include <string_view>
 #include <thread>
+#include <vector>
 
 #include "benchmarks/benchable.hpp"
 
@@ -22,52 +23,54 @@ template <typename Queue>
     }
 class MPMCQueueTester : public Benchable {
    public:
-    MPMCQueueTester(size_t queueSize) :
-            Benchable(std::format("{} benchmark", std::string(Queue::NAME))), q(queueSize) {}
+    MPMCQueueTester(size_t queueSize, size_t numPairs) :
+            Benchable(std::format("{} benchmark for {} consumers and {} producers",
+                                  std::string(Queue::NAME), numPairs, numPairs)),
+            q(queueSize),
+            numProducers(numPairs),
+            numConsumers((numPairs)) {}
 
     void runBenchmark(size_t iterations) override {
-        std::atomic<int> ready{};
+        std::atomic<int> ready{0};
         std::atomic<bool> start{false};
 
-        pinThread(0);
+        // pinThread(0);
 
-        auto pop = [&](int cpu) {
-            pinThread(cpu);
+        auto popFn = [&](int cpu) {
+            // pinThread(cpu);
             ready.fetch_add(1, std::memory_order_release);
             while (!start.load(std::memory_order_acquire));
 
-            for (size_t i{}; i < iterations; ++i) {
+            for (size_t i = 0; i < iterations; ++i) {
                 int val;
                 while (!q.pop(val));
             }
         };
 
-        auto push = [&](int cpu) {
+        auto pushFn = [&](int cpu) {
+            // pinThread(cpu);
             ready.fetch_add(1, std::memory_order_release);
-            pinThread(cpu);
             while (!start.load(std::memory_order_acquire));
 
-            for (size_t i{}; i < iterations; ++i) {
+            for (size_t i = 0; i < iterations; ++i) {
                 while (!q.push(i));
             }
         };
 
-        popper0 = std::thread([&]() { pop(2); });
-        popper1 = std::thread([&]() { pop(4); });
-        popper2 = std::thread([&]() { pop(6); });
-        pusher0 = std::thread([&]() { push(8); });
-        pusher1 = std::thread([&]() { push(10); });
-        pusher2 = std::thread([&]() { push(12); });
+        std::vector<std::thread> threads;
+        threads.reserve(numProducers + numConsumers);
 
-        while (ready.load(std::memory_order_acquire) != 6);
-        start.store(true, std::memory_order_release);  // Start trigger
+        int cpu = 0;
 
-        popper0.join();
-        popper1.join();
-        popper2.join();
-        pusher0.join();
-        pusher1.join();
-        pusher2.join();
+        // On my laptop pairs of sequential logical cores maps to pairs of physical cores
+        for (size_t i = 0; i < numConsumers; ++i) threads.emplace_back(popFn, (cpu += 2) % 24);
+        for (size_t i = 0; i < numProducers; ++i) threads.emplace_back(pushFn, (cpu += 2) % 24);
+
+        const int totalThreads = static_cast<int>(numProducers + numConsumers);
+        while (ready.load(std::memory_order_acquire) != totalThreads);
+        start.store(true, std::memory_order_release);
+
+        for (auto& t : threads) t.join();
     }
 
     void resetBenchmark() override { q.reset(); }
@@ -83,13 +86,10 @@ class MPMCQueueTester : public Benchable {
         }
     }
 
-    std::thread popper0;
-    std::thread popper1;
-    std::thread popper2;
-    std::thread pusher0;
-    std::thread pusher1;
-    std::thread pusher2;
+    std::vector<std::thread> threads;
     Queue q;
+    const size_t numProducers;
+    const size_t numConsumers;
 };
 
 }  // namespace benchmarks

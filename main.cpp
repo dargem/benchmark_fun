@@ -2,7 +2,9 @@
 #include <stdfloat>
 
 #include "src/benchmarks/MPMC/MPMC_bencher.hpp"
+#include "src/benchmarks/MPMC/atomics.hpp"
 #include "src/benchmarks/MPMC/locked.hpp"
+#include "src/benchmarks/MPMC/vyukov.hpp"
 #include "src/benchmarks/SOA_AOS/structures.hpp"
 #include "src/benchmarks/SSO/small_string_optimisation.hpp"
 #include "src/benchmarks/alignment/alignment.hpp"
@@ -24,11 +26,11 @@
 #include "src/benchmarks/weird_vector/reserve_vector.hpp"
 #include "src/stats/anovas.hpp"
 
-
 using benchmarks::AllocationBench;
 using benchmarks::Allocator;
 using benchmarks::AOS;
 using benchmarks::ArrayWrite;
+using benchmarks::AtomicMPMCQueue;
 using benchmarks::Attribute;
 using benchmarks::AttributeOptimisation;
 using benchmarks::BranchPredictionSorted;
@@ -46,6 +48,7 @@ using benchmarks::StandardBinarySearch;
 using benchmarks::StringRunner;
 using benchmarks::VectorAccess;
 using benchmarks::VectorWrapper;
+using benchmarks::VyukovAtomicQueue;
 using benchmarks::Xoroshiro128plus;
 using benchmarks::Xoroshiro64ArrayFill;
 using benchmarks::Xoroshiro64BufferedArrayFill;
@@ -268,13 +271,17 @@ void allocationAndDeletionAndVariableAllocBench() {
 }
 
 void MPMCQueueBench() {
-    constexpr static size_t SIZE{50000};
-    constexpr static size_t ITERATIONS{100000};
-    constexpr static size_t SAMPLES{1000};
+    constexpr static size_t SIZE{1uz << 16};
+    constexpr static size_t ITERATIONS{10000};  // Iterations for each thread to push/or pop
+    constexpr static size_t SAMPLES{30};
 
-    auto mutexQueue = MPMCQueueTester<MutexQueue>(SIZE);
+    constexpr static size_t NUM_PAIRS{8};
 
-    benchmarks::executeBench(ITERATIONS, SAMPLES, mutexQueue);
+    auto mutexQueue = MPMCQueueTester<MutexQueue>(SIZE, NUM_PAIRS);
+    auto atomicQueue = MPMCQueueTester<AtomicMPMCQueue>(SIZE, NUM_PAIRS);
+    auto vyukovQueue = MPMCQueueTester<VyukovAtomicQueue>(SIZE, NUM_PAIRS);
+
+    benchmarks::executeBench(ITERATIONS, SAMPLES, mutexQueue, atomicQueue, vyukovQueue);
 }
 
 int main() {

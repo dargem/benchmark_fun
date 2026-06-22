@@ -5,8 +5,10 @@
 #include <string_view>
 #include <vector>
 
-struct RingBufferQueue {
-    static constexpr std::string_view NAME = "Classic ring buffer";
+namespace benchmarks {
+    
+struct AtomicMPMCQueue {
+    static constexpr std::string_view NAME = "Atomic MPMC queue";
 
     std::vector<int> data;
     alignas(std::hardware_destructive_interference_size) std::atomic<size_t> read_idx{};
@@ -15,7 +17,7 @@ struct RingBufferQueue {
     alignas(std::hardware_destructive_interference_size) std::atomic<size_t> reserved_write_idx{};
 
     // Zero initialise data
-    RingBufferQueue(size_t capacity) : data(capacity, 0) {}
+    AtomicMPMCQueue(size_t capacity) : data(capacity, 0) {}
 
     void reset() {
         read_idx.store(0, std::memory_order_relaxed);
@@ -74,3 +76,5 @@ struct RingBufferQueue {
         return true;
     }
 };
+
+}  // namespace benchmarks

@@ -27,7 +27,7 @@ class MutexQueue {
 
     void reset() {}
 
-    static constexpr std::string_view NAME = "Mutex Queue";
+    static constexpr std::string_view NAME = "Mutex MPMC Queue";
 
    private:
     std::mutex m;
