@@ -15,8 +15,8 @@ namespace benchmarks {
 
 template <typename Queue>
     requires requires(Queue q, int a) {  // Beautiful concepts syntax
-        q.push(a);
-        q.pop(a);
+        { q.push(a) } -> std::convertible_to<bool>;
+        { q.pop(a) } -> std::convertible_to<bool>;
         q.reset();
         { Queue::NAME } -> std::convertible_to<std::string_view>;
     }
@@ -69,6 +69,8 @@ class MPMCQueueTester : public Benchable {
         pusher1.join();
         pusher2.join();
     }
+
+    void resetBenchmark() override { q.reset(); }
 
    private:
     void pinThread(int cpu) {
