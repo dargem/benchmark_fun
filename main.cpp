@@ -275,13 +275,13 @@ void MPMCQueueBench() {
     constexpr static size_t ITERATIONS{10000};  // Iterations for each thread to push/or pop
     constexpr static size_t SAMPLES{30};
 
-    constexpr static size_t NUM_PAIRS{8};
+    constexpr static size_t NUM_PAIRS{4};
 
     auto mutexQueue = MPMCQueueTester<MutexQueue>(SIZE, NUM_PAIRS);
-    auto atomicQueue = MPMCQueueTester<AtomicMPMCQueue>(SIZE, NUM_PAIRS);
+    // auto atomicQueue = MPMCQueueTester<AtomicMPMCQueue>(SIZE, NUM_PAIRS);
     auto vyukovQueue = MPMCQueueTester<VyukovAtomicQueue>(SIZE, NUM_PAIRS);
 
-    benchmarks::executeBench(ITERATIONS, SAMPLES, mutexQueue, atomicQueue, vyukovQueue);
+    benchmarks::executeBench(ITERATIONS, SAMPLES, mutexQueue, vyukovQueue);
 }
 
 int main() {
