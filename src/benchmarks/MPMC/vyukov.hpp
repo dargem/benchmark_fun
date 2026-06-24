@@ -35,10 +35,14 @@ class VyukovAtomicQueue {
                 // CAS instruction would fail. This CAS instruction if it fails updates pos with the
                 // write_idx's value.
             } else if (diff < 0) {
-                // Our pos is > seq which means that this slot has already been taken so we should
-                // give up.
+                // Our seq < pos. In this case we may have wrapped around our slots and gotten back
+                // to low sequences. If these slots were read from they would've been incremented by
+                // a loop to fix this so the queue is completely fill.
                 return false;
             } else {
+                // We have lost thee CAS race before we started. We looked at seq and someone else
+                // has both taken the write_idx and claimed the slot updating the seq. We now reload
+                // our pos.
                 pos = write_idx.load(std::memory_order_relaxed);
             }
         }
@@ -58,17 +62,27 @@ class VyukovAtomicQueue {
             Slot& slot = slots[pos & mask];
             size_t seq = slot.sequence.load(std::memory_order_acquire);
             intptr_t diff = (intptr_t)seq - (intptr_t)(pos + 1);
-            // If we've written to it already we would expect seq - (pos + 1) to equal 0
+            // If we've written to it already we would expect seq - (pos + 1) to equal 0. We can't
+            // use write_idx as a tool since we may have incremented write_idx (to reserve it) while
+            // having not yet actually written to it.
 
             if (diff == 0) {
+                // Do a CAS instruction, if another thread hasn't read while we were doing this we
+                // can make progress.
                 if (read_idx.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed)) break;
             } else if (diff < 0) {
-                return false;  // empty
+                return false;
+                // seq == pos initially which means this hasn't been written to
             } else {
                 pos = read_idx.load(std::memory_order_relaxed);
             }
         }
+        // We've incremented write_idx which means we can return this now
         val = slots[pos & mask].value;
+        // If been read we store index for that slot + mask + 1 which is just slot + n_slots. So
+        // this just increases leading bit and & mask will get pos back. This makes sense to get
+        // back to this slot we will need 1 more full loop. Note we don't reset pos we use & to do
+        // wrap arounds.
         slots[pos & mask].sequence.store(pos + mask + 1, std::memory_order_release);
         return true;
     }
