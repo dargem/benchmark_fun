@@ -5,10 +5,13 @@
 #include <vector>
 
 namespace benchmarks {
+
+namespace VyukovSlot {
 struct Slot {
     alignas(64) std::atomic<size_t> sequence{0};
     int value;
 };
+}  // namespace VyukovSlot
 
 class VyukovAtomicQueue {
    public:
@@ -22,7 +25,7 @@ class VyukovAtomicQueue {
         size_t pos = write_idx.load(std::memory_order_relaxed);
         while (true) {
             // Bit manipulation mod trick to cycle through array
-            Slot& slot = slots[pos & mask];
+            VyukovSlot::Slot& slot = slots[pos & mask];
             size_t seq = slot.sequence.load(std::memory_order_acquire);
             intptr_t diff = (intptr_t)seq - (intptr_t)pos;
 
@@ -59,7 +62,7 @@ class VyukovAtomicQueue {
     bool pop(int& val) {
         size_t pos = read_idx.load(std::memory_order_relaxed);
         while (true) {
-            Slot& slot = slots[pos & mask];
+            VyukovSlot::Slot& slot = slots[pos & mask];
             size_t seq = slot.sequence.load(std::memory_order_acquire);
             intptr_t diff = (intptr_t)seq - (intptr_t)(pos + 1);
             // If we've written to it already we would expect seq - (pos + 1) to equal 0. We can't
@@ -92,7 +95,7 @@ class VyukovAtomicQueue {
     void reset() {}
 
    private:
-    std::vector<Slot> slots;
+    std::vector<VyukovSlot::Slot> slots;
     size_t mask;
     alignas(64) std::atomic<size_t> write_idx{0};
     alignas(64) std::atomic<size_t> read_idx{0};

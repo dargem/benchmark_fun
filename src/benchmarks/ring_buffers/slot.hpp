@@ -6,10 +6,14 @@
 #include <string_view>
 #include <vector>
 
+namespace benchmarks {
+
+namespace {
 struct Slot {
     alignas(std::hardware_destructive_interference_size) std::atomic<bool> written;
     int data;
 };
+}  // namespace
 
 struct SlotRingBuffer {
     static constexpr std::string_view NAME = "Slot ring buffer";
@@ -59,3 +63,5 @@ struct SlotRingBuffer {
         return true;
     }
 };
+
+}  // namespace benchmarks

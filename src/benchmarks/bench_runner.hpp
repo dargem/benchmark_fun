@@ -2,13 +2,14 @@
 
 #include <math.h>
 
+#include <algorithm>
 #include <boost/math/distributions/fisher_f.hpp>
 #include <boost/math/distributions/students_t.hpp>
 #include <concepts>
 #include <format>
 #include <iostream>
-#include <memory>
 #include <numeric>
+#include <ranges>
 #include <stdexcept>
 #include <vector>
 
@@ -20,7 +21,7 @@ namespace benchmarks {
 constexpr static size_t NUMBER_CLT_TESTS_NEEDED{30};
 
 struct Evaluation {
-    Evaluation(std::string_view name, const std::vector<size_t> times, double meanCycles,
+    Evaluation(std::string_view name, std::vector<size_t> times, double meanCycles,
                double standardDeviation, size_t numTests) :
             name{name},
             observationValues{times},
@@ -43,11 +44,19 @@ struct Evaluation {
         const double margin{tScore * standardDeviation / std::sqrt(static_cast<double>(numTests))};
         lowerConfidenceInterval = meanCycles - margin;
         upperConfidenceInterval = meanCycles + margin;
+
+        std::sort(times.begin(), times.end());
+        size_t quarter = times.size() / 4;
+        // Lazy basically does it for large
+        auto IQR = times | std::views::drop(quarter) | std::views::take(2 * quarter);
+        size_t tot = std::accumulate(IQR.begin(), IQR.end(), 0uz, std::plus{});
+        IQM = static_cast<double>(tot) / std::distance(IQR.begin(), IQR.end());
     }
 
     void print() {
         std::cout << "---Summary statistics for " << name << "---"
                   << "\nSample mean cycles per test: " << meanCycles
+                  << "\nIQM cycles per test: " << IQM
                   << "\nConfidence interval: " << lowerConfidenceInterval << "-"
                   << upperConfidenceInterval << "\nSample standard deviation: " << standardDeviation
                   << "\nTests used: " << numTests << std::endl;
@@ -69,6 +78,8 @@ struct Evaluation {
 
     // confidence interval made using CONFIDENCE_ALPHA global variable
     constexpr static double ALPHA{0.05};
+
+    double IQM{};
     double lowerConfidenceInterval;
     double upperConfidenceInterval;
 };

@@ -19,6 +19,7 @@
 #include "src/benchmarks/ring_buffers/classic.hpp"
 #include "src/benchmarks/ring_buffers/condensed_cachy.hpp"
 #include "src/benchmarks/ring_buffers/ring_buffer_tester.hpp"
+#include "src/benchmarks/ring_buffers/slot.hpp"
 #include "src/benchmarks/rng/arrayfill.hpp"
 #include "src/benchmarks/rng/mersenne_twister.hpp"
 #include "src/benchmarks/rng/xoroshiro128+.hpp"
@@ -43,6 +44,7 @@ using benchmarks::MPMCQueueTester;
 using benchmarks::MutexQueue;
 using benchmarks::Policy;
 using benchmarks::ReservationSize;
+using benchmarks::SlotRingBuffer;
 using benchmarks::SOA;
 using benchmarks::StandardBinarySearch;
 using benchmarks::StringRunner;
@@ -215,15 +217,16 @@ void arrayFill() {
 }
 
 void ringBufferImplementations() {
-    constexpr static size_t BUFFER_CAPACITY{1000000};
-    constexpr static size_t ITERATIONS{100000000};
+    constexpr static size_t BUFFER_CAPACITY{2 << 16};
+    constexpr static size_t ITERATIONS{1000000};
     constexpr static size_t SAMPLES{100};
 
     auto standard = BufferTester<RingBuffer>(BUFFER_CAPACITY);
     auto cachy = BufferTester<CachingRingBuffer>(BUFFER_CAPACITY);
     auto mine = BufferTester<CachingRingBufferCompressed>(BUFFER_CAPACITY);
+    auto mySlot = BufferTester<SlotRingBuffer>(BUFFER_CAPACITY);
 
-    benchmarks::executeBench(ITERATIONS, SAMPLES, standard, cachy, mine);
+    benchmarks::executeBench(ITERATIONS, SAMPLES, standard, cachy, mine, mySlot);
 };
 
 // void binarySearchLayouts() {
@@ -297,11 +300,11 @@ int main() {
         // runArrayWriteBenchmark();
         // arrayFill();
         // binarySearchLayouts();
-        // ringBufferImplementations();
+        ringBufferImplementations();
         // allocatorBench();
         // allocationAndDeletionBench();
         // allocationAndDeletionAndVariableAllocBench();
-        MPMCQueueBench();
+        // MPMCQueueBench();
     } catch (const std::exception& e) {
         std::cout << "Error: " << e.what() << std::endl;
     } catch (...) {
