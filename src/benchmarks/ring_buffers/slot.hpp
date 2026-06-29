@@ -9,8 +9,8 @@
 namespace benchmarks {
 
 namespace {
-struct Slot {
-    alignas(std::hardware_destructive_interference_size) std::atomic<bool> written;
+struct alignas(std::hardware_destructive_interference_size) Slot {
+    std::atomic<bool> written;
     int data;
 };
 }  // namespace

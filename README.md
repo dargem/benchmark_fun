@@ -408,6 +408,10 @@ Erik Rigtorp's article claimed larger improvements of 20x, and this shows actual
 As an aside alignas(64) does not always cut it since some computers have 128 byte cachelines.
 This is not that extreme of an edge-case, modern Apple Silicon chips like the M series use 128 byte cache lines. The solution to this is through `std::hardware_destructive_interference_size` which is just the minimum offset between two objects needed to avoid false sharing. So aligning an object with that will let it sit in its own cache line.
 
+# Multi Producer Multi Consumer Queue Optimizations
+
+This will go over three implementations of MPMC queue's, one that uses a mutex, a naively implemented version only lockfree version I made and a Vyukov style one using slots.
+
 # SSO
 
 `std::string` differs from a C‑style `char[]` in that it's resizable and often manages a heap allocation (similar to `std::vector`). Allocating small strings on the heap can be costly, so many implementations use SSO (Small String Optimization): small strings are stored directly inside the `std::string` object (commonly in the space otherwise used for the pointer/capacity), avoiding a heap allocation.
