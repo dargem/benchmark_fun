@@ -14,6 +14,8 @@ It also contains information on various performance-related C++ language feature
 
 - [Zero Cost Compile Time Storage Specialization](#zero-cost-compile-time-storage-specialization)
 
+- [MPMC Queue Optimizations](#multi-producer-multi-consumer-queue-optimizations)
+
 - [Sorting To Help With Branch Prediction](#sorting-to-help-with-branch-prediction)
 
 - [LIKELY / UNLIKELY Attributes & A Branch Prediction Tangent](#likely--unlikely-attributes-and-a-branch-prediction-tangent)
@@ -410,7 +412,46 @@ This is not that extreme of an edge-case, modern Apple Silicon chips like the M 
 
 # Multi Producer Multi Consumer Queue Optimizations
 
-This will go over three implementations of MPMC queue's, one that uses a mutex, a naively implemented version only lockfree version I made and a Vyukov style one using slots.
+This will go over three implementations of MPMC queue's, one that uses a mutex, a naively implemented version only lockfree version I made and a Vyukov style one.
+
+Starting off with a dumb simple implementation, you can just create a wrapper around std::queue. A mutex can be used to guard access so that only one thread can be reading/writing at a given time.
+
+```
+bool push(int val) {
+    std::lock_guard<std::mutex> acquire(m);
+    q.push(val);
+    return true;  // std::queue push cannot fail
+}
+
+bool pop(int& inp) {
+    std::lock_guard<std::mutex> acquire(m);
+    if (q.empty()) return false;
+
+    inp = q.front();
+    q.pop();
+    return true;
+}
+```
+
+This is pretty simple but using a lock can have overhead due to system calls. System calls are expensive because it involves trapping into the kernel to elevate privilege level from user to kernel mode. Once in kernel mode the OS can run the restricted operations. This is slow and expensive, so it is preferably if everything can still be done in user space to avoid needing to make a system call.
+
+This was ran on linux so under the hood this mutex is implemented by linux's futex, standing for fast userspace mutex. Like the name suggest futex's do not necessarily require context switching form user to kernel space.
+
+Futex's were created with a specific observation in mind. For most applications, say a multiple producer single consumer queue as part of a thread safe logging system, while you need to be able to support multiple producers most of the time you won't actually have multiple producers creating logs. A lock is used to ensure thread safety for when there is contention. Futex's have the user manage an 32 bit integer which they use to track contention. You may do something like this.
+
+- 0: Unlocked
+- 1: Locked
+- 2: Locked + Contention
+
+Since this integer is managed in userspace no system calls are used to check whether the lock is free or not. If the lock is unlocked, you can simply use an atomic instruction (say CAS) to lock it. If it succeeds you have acquired the lock no systems calls needed. This is the fast path and it saves a lot of time.
+
+Now a second thread comes along and it wishes to acquire the lock, however the integer is equal to 1 so its currently taken. To avoid busy waiting it needs to be put to sleep and be woken up again when the lock gets freed. This will of course take a system call. So before asking to be put to sleep, we use another CAS instruction to swap the integer to 2, noting the lock as being locked while having contention. Then we make the system call to send ourselves to sleep.
+
+Now our original thread has finished its work, and we can unlock our mutex. We check the integer state first. If the integer is == 1 we know its just locked and nobody else is waiting for it so we can just do another CAS instruction, no system call needed and continue on. However if the lock is == 2 then we know another thread was put to sleep. If we didn't have a separate state for this the thread would stay sleeping forever as control never gets handed back to the OS to wake up the thread. So we now make the needed futex system call to wake it up and then continue on.
+
+So because of this a mutex isn't really that heavy on the un-contended path. Jumping to a lock free implementation while it can improve performance, if the mutex has little contention it isn't going to be much of one.
+
+However if you expect contention (remembering that with a mutex a reader contend with writers and vice versa, not just other readers) a lock free implementation can get nice speedups. This will detail below 2 lock free MPMC queues, a naively implemented one I produced showing how you can get thread safety using atomics, as well as a properly optimized implementation.
 
 # SSO
 
