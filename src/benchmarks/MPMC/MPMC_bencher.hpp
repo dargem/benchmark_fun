@@ -4,6 +4,7 @@
 #include <sched.h>
 
 #include <atomic>
+#include <cmath>
 #include <concepts>
 #include <format>
 #include <string_view>
@@ -34,26 +35,41 @@ class MPMCQueueTester : public Benchable {
         std::atomic<int> ready{0};
         std::atomic<bool> start{false};
 
-        // pinThread(0);
+        pinThread(0);
 
         auto popFn = [&](int cpu) {
-            // pinThread(cpu);
+            pinThread(cpu);
+            volatile int sink;
+
             ready.fetch_add(1, std::memory_order_release);
             while (!start.load(std::memory_order_acquire));
 
             for (size_t i = 0; i < iterations; ++i) {
-                int val;
-                while (!q.pop(val));
+                int temp;
+                while (!q.pop(temp));
+                // We have the popper do some work
+
+                sink = std::acos(temp) + std::tan(temp);
+                for (size_t i{}; i < 4; ++i) {
+                    sink *= std::acos(sink) + std::sin(temp);
+                }
             }
         };
 
         auto pushFn = [&](int cpu) {
-            // pinThread(cpu);
+            pinThread(cpu);
             ready.fetch_add(1, std::memory_order_release);
             while (!start.load(std::memory_order_acquire));
 
             for (size_t i = 0; i < iterations; ++i) {
-                while (!q.push(i));
+                // We make the popper do some work before pushing it
+
+                int temp = std::acos(i) + std::tan(i);
+                for (size_t i{}; i < 4; ++i) {
+                    temp *= std::acos(temp) + std::sin(temp);
+                }
+
+                while (!q.push(temp));
             }
         };
 
@@ -63,8 +79,16 @@ class MPMCQueueTester : public Benchable {
         int cpu = 0;
 
         // On my laptop pairs of sequential logical cores maps to pairs of physical cores
-        for (size_t i = 0; i < numConsumers; ++i) threads.emplace_back(popFn, (cpu += 2) % 24);
-        for (size_t i = 0; i < numProducers; ++i) threads.emplace_back(pushFn, (cpu += 2) % 24);
+        auto incrementPin = [&]() -> int {
+            cpu += (numProducers + numConsumers <= 8 ? 2 : 1);
+            cpu %= 16;
+            return cpu;
+        };
+
+        for (size_t i = 0; i < numConsumers; ++i) {
+            threads.emplace_back(popFn, incrementPin());
+            threads.emplace_back(pushFn, incrementPin());
+        }
 
         const int totalThreads = static_cast<int>(numProducers + numConsumers);
         while (ready.load(std::memory_order_acquire) != totalThreads);

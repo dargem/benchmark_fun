@@ -274,11 +274,11 @@ void allocationAndDeletionAndVariableAllocBench() {
 }
 
 void MPMCQueueBench() {
-    constexpr static size_t SIZE{1uz << 16};
-    constexpr static size_t ITERATIONS{50000};  // Iterations for each thread to push/or pop
+    constexpr static size_t SIZE{1uz << 24};
+    constexpr static size_t ITERATIONS{10000};  // Iterations for each thread to push/or pop
     constexpr static size_t SAMPLES{300};
 
-    constexpr static size_t NUM_PAIRS{1};
+    constexpr static size_t NUM_PAIRS{10};
 
     auto mutexQueue = MPMCQueueTester<MutexQueue>(SIZE, NUM_PAIRS);
     // auto atomicQueue = MPMCQueueTester<AtomicMPMCQueue>(SIZE, NUM_PAIRS);

@@ -515,6 +515,26 @@ bool pop(int& val) {
 }
 ```
 
+So we run a benchmark on our functional atomic based MPMC queue expecting it to be (maybe) more performant than our mutex implementation. Some bad news.
+
+```
+---Summary statistics for Mutex MPMC Queue benchmark for 8 consumers and 8 producers---
+Sample mean cycles per test: 5.12494e+07
+IQM cycles per test: 4.83798e+07
+Confidence interval: 4.42166e+07-5.82821e+07
+Sample standard deviation: 1.88341e+07
+Tests used: 30
+
+---Summary statistics for Atomic MPMC queue benchmark for 8 consumers and 8 producers---
+Sample mean cycles per test: 2.40702e+09
+IQM cycles per test: 5.4861e+07
+Confidence interval: -2.40482e+09-7.21886e+09
+Sample standard deviation: 1.28863e+10
+Tests used: 30
+```
+
+Running using some very high contention of 8 consumers and producers just using the queue we manage to create a 47x slower implementation.
+
 # SSO
 
 `std::string` differs from a C‑style `char[]` in that it's resizable and often manages a heap allocation (similar to `std::vector`). Allocating small strings on the heap can be costly, so many implementations use SSO (Small String Optimization): small strings are stored directly inside the `std::string` object (commonly in the space otherwise used for the pointer/capacity), avoiding a heap allocation.

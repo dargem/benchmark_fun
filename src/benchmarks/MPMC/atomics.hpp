@@ -6,7 +6,7 @@
 #include <vector>
 
 namespace benchmarks {
-    
+
 struct AtomicMPMCQueue {
     static constexpr std::string_view NAME = "Atomic MPMC queue";
 
