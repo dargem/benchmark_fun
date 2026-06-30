@@ -453,6 +453,40 @@ So because of this a mutex isn't really that heavy on the un-contended path. Jum
 
 However if you expect contention (remembering that with a mutex a reader contend with writers and vice versa, not just other readers) a lock free implementation can get nice speedups. This will detail below 2 lock free MPMC queues, a naively implemented one I produced showing how you can get thread safety using atomics, as well as a properly optimized implementation.
 
+This implementation doubles the number of indexes we have. We use a read_idx, a write_idx but also a reserved_read_idx and reserved_write_idx. The reason we use a second reserved idx is for example with pushing, write_idx is what we have actually written up to while reserved_write_idx is what we have reserved up to. An example is a pusher needs to secure themselves an index they can use for the write. So they go to the reserved_write_idx and use a CAS instruction to increment it. If they successfully incremented it they can use that reserved index knowing no other thread is trying to write to that. However while we have reserved it, we haven't actually noted that we've written to it. So we do our write, then if our write_idx is up to our reserved index we can "confirm" our write by incrementing the write_idx using a CAS instruction.
+
+Example code for a push implementation below.
+
+```
+bool push(int val) {
+    size_t reserved;
+    size_t next;
+    do {
+        reserved = reserved_write_idx.load(std::memory_order_relaxed);
+        next = (reserved + 1) % data.size();
+
+        if (next == read_idx.load(std::memory_order_acquire)) {
+            return false;  // We have a full queue
+        }
+    } while (
+        !reserved_write_idx.compare_exchange_weak(reserved, next, std::memory_order_relaxed));
+    // If reserved write idx matches our reservation, we can update it with next
+
+    data[reserved] = val;
+
+    // Reserved is now used up
+    size_t expected = reserved;
+    while (!write_idx.compare_exchange_weak(expected, next, std::memory_order_release,
+                                            std::memory_order_relaxed)) {
+        // On a failure the CAS instruction updates expected with the actual value, we want to
+        // set that back
+        expected = reserved;
+    }
+
+    return true;
+}
+```
+
 # SSO
 
 `std::string` differs from a C‑style `char[]` in that it's resizable and often manages a heap allocation (similar to `std::vector`). Allocating small strings on the heap can be costly, so many implementations use SSO (Small String Optimization): small strings are stored directly inside the `std::string` object (commonly in the space otherwise used for the pointer/capacity), avoiding a heap allocation.
