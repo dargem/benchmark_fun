@@ -453,7 +453,7 @@ So because of this a mutex isn't really that heavy on the un-contended path. Jum
 
 However if you expect contention (remembering that with a mutex a reader contend with writers and vice versa, not just other readers) a lock free implementation can get nice speedups. This will detail below 2 lock free MPMC queues, a naively implemented one I produced showing how you can get thread safety using atomics, as well as a properly optimized implementation.
 
-This implementation doubles the number of indexes we have. We use a read_idx, a write_idx but also a reserved_read_idx and reserved_write_idx. The reason we use a second reserved idx is for example with pushing, write_idx is what we have actually written up to while reserved_write_idx is what we have reserved up to. An example is a pusher needs to secure themselves an index they can use for the write. So they go to the reserved_write_idx and use a CAS instruction to increment it. If they successfully incremented it they can use that reserved index knowing no other thread is trying to write to that. However while we have reserved it, we haven't actually noted that we've written to it. So we do our write, then if our write_idx is up to our reserved index we can "confirm" our write by incrementing the write_idx using a CAS instruction.
+The issue you run into when implementing a MPMC queue with atomics is allowing multiple threads to write in parallel safely. Imagine if you had one write_idx. You could use a CAS instruction to increment write_idx, if it succeeds now you know you're the only thead which can write to this data index. However a reader now thinks you've already written to it, and they could perform a read before you do your write. What I thought of was using an additional index so we also have a reserved_read_idx and reserved_write_idx. The pusher rather than trying to increment the write_idx, increments the reserved_write_idx so it knows only it is allowed to write to this index. However we don't actually increment the write_idx which is what the reader checks to see it can write. Now we can perform our write and once its done, if the write_idx is equal to the index we've reserved, we can increment the write_idx. There's the chance while we've reserved this write, a thread earlier has also reserved a write and hasn't finished yet. While we can both write data simultaneously, in this case we have to wait until they are finished so we know that everything up to us has been written. We achieve this by only incrementing write_idx if its equal to the index we reserved once we finished writing.
 
 Example code for a push implementation below.
 
@@ -471,6 +471,7 @@ bool push(int val) {
     } while (
         !reserved_write_idx.compare_exchange_weak(reserved, next, std::memory_order_relaxed));
     // If reserved write idx matches our reservation, we can update it with next
+    // If we fail we at least know another thread has taken this reservation rather than us
 
     data[reserved] = val;
 
@@ -483,6 +484,33 @@ bool push(int val) {
         expected = reserved;
     }
 
+    return true;
+}
+```
+
+Similarly there's reservation logic for a pop.
+We don't want multiple readers reading the same value.
+
+```
+bool pop(int& val) {
+    size_t reserved;
+    size_t next;
+    do {
+        reserved = reserved_read_idx.load(std::memory_order_relaxed);
+        // We have an empty queue
+        if (reserved == write_idx.load(std::memory_order_acquire)) return false;
+
+        next = (reserved + 1) % data.size();
+    } while (
+        !reserved_read_idx.compare_exchange_weak(reserved, next, std::memory_order_relaxed));
+
+    val = data[reserved];
+
+    size_t expected = reserved;
+    while (!read_idx.compare_exchange_weak(expected, next, std::memory_order_release,
+                                            std::memory_order_relaxed)) {
+        expected = reserved;
+    }
     return true;
 }
 ```
