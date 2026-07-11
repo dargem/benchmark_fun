@@ -546,7 +546,9 @@ while (!write_idx.compare_exchange_weak(expected, next, std::memory_order_releas
 
 Consider the "retry" loop for each thread. It has reserved an idx and wants to check if it can publish its operation to "finish" it. Each thread is going to be using CAS instructions to poll the same shared idx. Since the CAS instruction is going to try to write to the idx, each thread needs the cacheline under exclusive or modified state. This of course is going to result in many threads "fighting" over ownership of idx's cacheline, resulting in less chance the thread that actually needs the idx gets it. All the while these RFO's are causing tons of delays and making the cache ping pong between cores. As threads increase cache coherence traffic is going to explode which is what we see from the 47x slowdown. With lower contention like 2 pusher / 2 writers slower than a mutex but not by a significant margin. Its interesting we've managed to make a lock free MPMC that scales worse than a locked one.
 
-WIP
+A solution around this is to change the "publishing" step so that it doesn't need any kind of synchronization between threads. One way to do this is through adding some metadata like a bool flag to an element. If the flag is false, we can write to the data. If the flag is true the data has been written to. Reading from the data sets it back to false so someone else can read from it. We use the same reserved_idx idea to ensure only we can write to this data. Once our write is done, rather than trying to advance a write_idx we just set the flag to true. Now a reader simply checks the reserved read_idx, 
+
+If this flag is true, we have written to the data, and if its false it hasn't been written to. 
 
 # SSO
 
