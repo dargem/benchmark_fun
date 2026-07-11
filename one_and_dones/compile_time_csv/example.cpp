@@ -5,11 +5,16 @@
 #include <ranges>
 #include <vector>
 
-// You will need c++ 26 compiler with reflection to run this. You can use Godbolt and compile it
-// with the Clang experimental reflection branch and it'll will work
 constexpr const char raw_data[] = {
 #embed "example.csv"
     , 0  // Null terminate
+};
+
+template <size_t N>
+struct CompString {
+    constexpr CompString(const char (&arr)[N]) { std::copy_n(arr, N, data.data()); }
+    consteval auto string_view() const { return std::string_view(data.data(), N - 1); }
+    std::array<char, N> data;
 };
 
 constexpr std::string_view csv{raw_data};
@@ -136,6 +141,18 @@ constexpr std::array<Row, NUM_ROWS> data = [] {
     return data;
 }();
 
+template <CompString s>
+consteval auto get(const Row& r) {
+    constexpr auto members = std::define_static_array(
+        std::meta::nonstatic_data_members_of(^^Row, std::meta::access_context::unchecked()));
+    template for (constexpr auto member : members) {
+        if (std::meta::identifier_of(member) == s.string_view()) {
+            return r.[:member:];
+        }
+    }
+    throw "no member with that name";
+}
+
 int main() {
     std::cout << "Row Names & Types" << '\n';
     constexpr auto members = std::define_static_array(
@@ -154,5 +171,6 @@ int main() {
         std::cout << '\n';
     }
 
+    std::cout << get<"AGE">(data[2]) << '\n';
     return 0;
 }
