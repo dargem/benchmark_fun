@@ -546,9 +546,9 @@ while (!write_idx.compare_exchange_weak(expected, next, std::memory_order_releas
 
 Consider the "retry" loop for each thread. It has reserved an idx and wants to check if it can publish its operation to "finish" it. Each thread is going to be using CAS instructions to poll the same shared idx. Since the CAS instruction is going to try to write to the idx, each thread needs the cacheline under exclusive or modified state. This of course is going to result in many threads "fighting" over ownership of idx's cacheline, resulting in less chance the thread that actually needs the idx gets it. All the while these RFO's are causing tons of delays and making the cache ping pong between cores. As threads increase cache coherence traffic is going to explode which is what we see from the 47x slowdown. With lower contention like 2 pusher / 2 writers slower than a mutex but not by a significant margin. Its interesting we've managed to make a lock free MPMC that scales worse than a locked one.
 
-A solution around this is to change the "publishing" step so that it doesn't need any kind of synchronization between threads. One way to do this is through adding some metadata like a bool flag to an element. If the flag is false, we can write to the data. If the flag is true the data has been written to. Reading from the data sets it back to false so someone else can read from it. We use the same reserved_idx idea to ensure only we can write to this data. Once our write is done, rather than trying to advance a write_idx we just set the flag to true. Now a reader simply checks the reserved read_idx, 
+A solution around this is to change the "publishing" step so that it doesn't need any kind of synchronization between threads. One way to do this is through adding some metadata like a bool flag to an element. If the flag is false, we can write to the data. If the flag is true the data has been written to. Reading from the data sets it back to false so someone else can read from it. We use the same reserved_idx idea to ensure only we can write to this data. Once our write is done, rather than trying to advance a write_idx we just set the flag to true. Now a reader simply checks the reserved read_idx,
 
-If this flag is true, we have written to the data, and if its false it hasn't been written to. 
+If this flag is true, we have written to the data, and if its false it hasn't been written to.
 
 # SSO
 
@@ -1651,7 +1651,32 @@ static_assert(!P);
 
 WIP
 
-# plans
+# C++26 Compile Time CSV Parser
+
+One of the most exciting C++ 26 is reflection. I read an interesting blog by Daniel Lemire talking about how his simd accelerated JSON library was planning to support compile time json parsing. Using the newly standardized #embed macro you can embed the characters of a file into your program at compile time. E.G:
+
+```
+constexpr char raw_data[] = {
+    #embed "example.csv"
+    , 0 // Null terminates the file
+};
+```
+
+This lets us embed any file into our program as chars, then with reflection you can create a type, defining its members based on the structure of the JSON. Since this char array is constexpr you can convert it into a form you like and perform compile time calculations. Compile time JSON parsing sounded like a neat idea so I stole it and made a simpler barebones compile time CSV parser to see what C++ 26 has to promise. This was all ran using the clang experimental reflection branch with godbolt. Just running this with the mainline clang compiler won't work as p2996 is still very experimental and not on it.
+
+So to implement this CSV parser there's a few main steps:
+
+1. Load the CSV file into the program (as done above)
+2. Parse the CSV's header for names
+3. Get the data types associated to the names
+4. Create a struct Row, where its members are the CSV's data
+5. Make ourselves a Row for each row in our csv
+
+And now we've processed the CSV into a format that its a `std::array<Row, NUM_ROWS> data;` which is easy enough to use. We may as well make this constexpr so we can perform some compile time calculations using it. A practical example of a similar process is say we have a configuration file for a program. One of the settings is LogLevel. We change log level so DEBUG. The program could at runtime read the file, then for each log call check if the log's level is >= kept log level. For a performance critical app this isn't ideal as this really is known at compile time (assuming we don't care about supporting changing log level without recompiling). Using this our program could embed the settings file at compile time, template our logger with the chosen kept log level and check at compile time any logs that aren't needed.
+
+WIP
+
+# PLANS
 
 - Benchmarks for different types of containers, eg vector vs sparse set vs linked list vs colony/hive
 - proper statistics with anova, levene test, residual normality checking and other stuff

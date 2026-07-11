@@ -5,7 +5,7 @@
 #include <ranges>
 #include <vector>
 
-constexpr const char raw_data[] = {
+constexpr char raw_data[] = {
 #embed "example.csv"
     , 0  // Null terminate
 };
