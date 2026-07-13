@@ -107,7 +107,6 @@ constexpr size_t NUM_ROWS = []() -> size_t {
 consteval {
     auto lines = split(csv, '\n');
     auto headers = split(lines[0], ',');
-    auto first_row = split(lines[1], ',');
 
     std::vector<std::meta::info> specs;
     for (size_t i = 0; i < headers.size(); ++i) {

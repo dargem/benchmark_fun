@@ -1757,8 +1757,51 @@ consteval std::string_view sanitize(std::string_view line) {
 
 // Now while we can parse our line and get out a "name" "type" pair strings,
 // we need to map our string which is the name of a type into that type.
+// There's no way except making our own mapping I think sadly.
 
+// ^^ is the syntax for the static reflection operator, it gets a std::meta::info from the given type
+consteval std::meta::info name_to_type(std::string_view name) {
+    if (name == "size_t")        return ^^size_t;
+    if (name == "int")           return ^^int;
+    if (t == "double")           return ^^double;
+    if (t == "float")            return ^^float;
+    if (t == "std::string_view") return ^^std::string_view;
+    throw "Unkown type, add it to mapping";
+}
+
+// Now we can parse our fields, we're going to use a consteval block here
+// It basically guarantees everything done in this block is done at compile time
+
+consteval {
+    // The consteval block forcing this to be done at compile time is needed
+    // For example split returns a std::vector at compile time
+    // This is fine if its all done in a constant evaluated context
+    // But it can't "escape out" of that
+    auto lines = split(csv, '\n');
+    auto headers = split(lines[0], ',');
+
+    std::vector<std::meta::info> specs;
+    for (size_t i{}; i < headers.size(); ++i) {
+        auto pair = split(headers[i], '.');
+
+        if (pair.size() != 2) {
+            throw "Expects name.type format";
+            // Could do a lot more sanitization and checking but this is more of an example prob
+        }
+
+        std::meta::info type = name_to_type(sanitize(pair[0]));
+
+        // Our type is the member's type... The name will be the member's identifier
+        specs.push_back(data_member_spec(type, {.name = sanitize(pair[0])}));
+    }
+
+    define_aggregate(^^Row, specs);
+}
 ```
+
+Now we have successfully defined our Row to have the member's specified in the CSV header.
+All thats left is making a Row for each row in our data,
+and loading the data into the corresponding row object.
 
 # PLANS
 
