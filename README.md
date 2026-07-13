@@ -1667,10 +1667,9 @@ This lets us embed any file into our program as chars, then with reflection you 
 So to implement this CSV parser there's a few main steps:
 
 1. Load the CSV file into the program (as done above)
-2. Parse the CSV's header for names
-3. Get the data types associated to the names
-4. Create a struct Row, where its members are the CSV's data
-5. Make ourselves a Row for each row in our csv
+2. Parse the CSV's header for names and associated types
+3. Create a struct Row, where its members are the CSV's data
+4. Make ourselves a Row for each row in our csv loading in the data
 
 And now we've processed the CSV into a format that its a `std::array<Row, NUM_ROWS> data;` which is easy enough to use. We may as well make this constexpr so we can perform some compile time calculations using it. A practical example of a similar process is say we have a configuration file for a program. Being able to load say LogLevel at compile time, allows us to compile out all logs with lower importance than our kept levlevel.
 
@@ -1726,7 +1725,7 @@ consteval std::vector<char> split(std::string_view line, char delimiter) {
 }
 
 // And we want a way to remove leading/trailing whitespace since we allow that
-consteval std::string_view sanitize(std::string_view line) {
+consteval std::string_view sanitize(std::string_view line, char skip = ' ') {
     std::string_view filtered{line};
 
     // While a std::string_view is read only, you can shift up the start of view and cut off the end
@@ -1738,11 +1737,11 @@ consteval std::string_view sanitize(std::string_view line) {
 
     while (a != b) {
         // Remove prefix from a, then remove trail from b, if nothing to remove break
-        if (*a == ' ') {
+        if (*a == skip) {
             ++prefix_whitespace;
             ++a;
         }
-        else if (*b == ' ') {
+        else if (*b == skip) {
             +trail_whitespace;
             --b;
         }
@@ -1777,7 +1776,9 @@ consteval {
     // For example split returns a std::vector at compile time
     // This is fine if its all done in a constant evaluated context
     // But it can't "escape out" of that
-    auto lines = split(csv, '\n');
+
+    // We remove trailing \n in case the file has empty lines
+    auto lines = split(sanitize(csv,'\n'), '\n');
     auto headers = split(lines[0], ',');
 
     std::vector<std::meta::info> specs;
@@ -1795,6 +1796,7 @@ consteval {
         specs.push_back(data_member_spec(type, {.name = sanitize(pair[0])}));
     }
 
+    // And that's step 3 also, defining Row with our identifiers and associated types is easy
     define_aggregate(^^Row, specs);
 }
 ```
@@ -1802,6 +1804,51 @@ consteval {
 Now we have successfully defined our Row to have the member's specified in the CSV header.
 All thats left is making a Row for each row in our data,
 and loading the data into the corresponding row object.
+There is an issue first though, while we might know our data is a size_t we are "loading" it from a string.
+So we need to specify a way to parse a string into our given type.
+
+```
+
+// Could modify this pretty easily to parse signed / unsigned ints of any size
+consteval size_t parse_size_t(std::string_view s) {
+    size_t result{};
+    for (char c : s) {
+        result = result * 10 + (c - '0');
+    }
+    return result;
+}
+
+template <std::meta::info Member>
+consteval auto parse_field(std::string_view field) {
+    // We just make a mapping, parsing our data into a given type
+
+    // Get dealiased type of member (will explain)
+    constexpr auto T = std::meta::dealias(std::meta::type_of(Member));
+
+    if (T == std::meta::dealis(^^size_t)) return parse_size_t(field);
+    // ... support for other types delegating to its parsing function
+
+    throw "Unkown type, add it to field parsing";
+}
+```
+
+// We're just going to use immediately evaluated lambdas
+// I think its the cleanest way to initialize a constexpr variable
+constexpr size_t NUM_ROWS = [](){
+// No need to -1 as trailing \n is gone
+return split(sanitize(csv, '\n'), '\n').size();
+}();
+
+constexpr std::array<Row, NUM_ROWS> data = [] {
+std::array<Row, NUM_ROWS> data;
+
+    auto lines = split(sanitize(csv, '\n'), '\n');
+
+    return data;
+
+}()
+
+```
 
 # PLANS
 
@@ -1814,3 +1861,4 @@ and loading the data into the corresponding row object.
 - different dynamic dispatch methods
 - different binary search memory layouts
 - simd binary search
+```
