@@ -1672,9 +1672,93 @@ So to implement this CSV parser there's a few main steps:
 4. Create a struct Row, where its members are the CSV's data
 5. Make ourselves a Row for each row in our csv
 
-And now we've processed the CSV into a format that its a `std::array<Row, NUM_ROWS> data;` which is easy enough to use. We may as well make this constexpr so we can perform some compile time calculations using it. A practical example of a similar process is say we have a configuration file for a program. One of the settings is LogLevel. We change log level so DEBUG. The program could at runtime read the file, then for each log call check if the log's level is >= kept log level. For a performance critical app this isn't ideal as this really is known at compile time (assuming we don't care about supporting changing log level without recompiling). Using this our program could embed the settings file at compile time, template our logger with the chosen kept log level and check at compile time any logs that aren't needed.
+And now we've processed the CSV into a format that its a `std::array<Row, NUM_ROWS> data;` which is easy enough to use. We may as well make this constexpr so we can perform some compile time calculations using it. A practical example of a similar process is say we have a configuration file for a program. Being able to load say LogLevel at compile time, allows us to compile out all logs with lower importance than our kept levlevel.
 
-WIP
+One of the settings is LogLevel. We change log level so DEBUG. The program could at runtime read the file, then for each log call check if the log's level is >= kept log level. For a performance critical app this isn't ideal as this really is known at compile time (assuming we don't care about supporting changing log level without recompiling). Using this our program could embed the settings file at compile time, template our logger with the chosen kept log level and check at compile time any logs that aren't needed.
+
+Because I'm lazy I have it so the user must modify the header to specify the type of ID. There are benefits as else we have to parse the data and try to figure out what data type to use. This is finnicky and makes use less transparent. Imagine ID is parsed as a size_t because its non negative and NUM has a negative value so we say its a int64_t. The user though expected them to both be signed types and checks if -1 (signed val) < 5 (signed val). C++ does an implicit conversion of -1 to a size_t which wraps around to a large number and returns true. Obviously not ideal. For future reference this is the format of the data.
+
+```
+ID.size_t, NUM.size_t, AGE.size_t
+0, 5, 19
+1, 3, 23
+2, 6, 41
+3, 3, 37
+```
+
+So let's go about this. Note this is more of a barebones impl but it is fully functional.
+
+Step 1: Load the CSV
+
+```
+constexpr char raw_data[] = {
+    #embed "example.csv"
+    , 0 // Null terminates the file
+};
+
+constexpr std::string_view data{raw_data}; // Can get a string_view to it for easier to use
+```
+
+Step 2: Pasrse the header for names + types
+
+```
+
+struct Row; // We declare there's a type Row but its incomplete
+
+// Using define_aggregate we will define it using the csv's data
+
+// We want a handy way to split the data, our raw_data is an array, endlines are \n
+// Then delimiters between entries on the same line is ,
+// Then delimiters between the name and value is a .
+
+consteval std::vector<char> split(std::string_view line, char delimiter) {
+    std::vector<std::string_view> out;
+    size_t start{};
+
+    for (size_t i{}; i <= line.size(); ++i) {
+        if (i == line.size() || line[i] == delimiter) {
+            out.push_back(line.substr(start, i - start));
+            start = i + 1;
+        }
+    }
+
+    return out;
+}
+
+// And we want a way to remove leading/trailing whitespace since we allow that
+consteval std::string_view sanitize(std::string_view line) {
+    std::string_view filtered{line};
+
+    // While a std::string_view is read only, you can shift up the start of view and cut off the end
+    auto a = line.begin();
+    auto b = line.begin();
+
+    size_t prefix_whitespace{};
+    size_t trail_whitespace{};
+
+    while (a != b) {
+        // Remove prefix from a, then remove trail from b, if nothing to remove break
+        if (*a == ' ') {
+            ++prefix_whitespace;
+            ++a;
+        }
+        else if (*b == ' ') {
+            +trail_whitespace;
+            --b;
+        }
+        else
+            break;
+    }
+
+    filtered.remove_prefix(prefix_whitespace);
+    filtered.remove_suffix(trail_whitespace);
+    return filtered;
+}
+
+// Now while we can parse our line and get out a "name" "type" pair strings,
+// we need to map our string which is the name of a type into that type.
+
+```
 
 # PLANS
 
