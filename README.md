@@ -1695,22 +1695,22 @@ constexpr char raw_data[] = {
     , 0 // Null terminates the file
 };
 
-constexpr std::string_view data{raw_data}; // Can get a string_view to it for easier to use
+constexpr std::string_view csv{raw_data}; // Can get a string_view to it for easier to use
 ```
 
-Step 2: Pasrse the header for names + types
+Step 2: Parse the header for names + types
 
 ```
 
 struct Row; // We declare there's a type Row but its incomplete
 
-// Using define_aggregate we will define it using the csv's data
+// Using define_aggregate we will define it using the csv's header
 
 // We want a handy way to split the data, our raw_data is an array, endlines are \n
 // Then delimiters between entries on the same line is ,
 // Then delimiters between the name and value is a .
 
-consteval std::vector<char> split(std::string_view line, char delimiter) {
+consteval std::vector<std::string_view> split(std::string_view line, char delimiter) {
     std::vector<std::string_view> out;
     size_t start{};
 
@@ -1726,32 +1726,13 @@ consteval std::vector<char> split(std::string_view line, char delimiter) {
 
 // And we want a way to remove leading/trailing whitespace since we allow that
 consteval std::string_view sanitize(std::string_view line, char skip = ' ') {
-    std::string_view filtered{line};
+    size_t start{};
+    size_t end{line.size()};
 
-    // While a std::string_view is read only, you can shift up the start of view and cut off the end
-    auto a = line.begin();
-    auto b = line.begin();
+    for (; start < end && line[start] == skip; ++start);
+    for (; start < end && line[end - 1] == skip; --end);\
 
-    size_t prefix_whitespace{};
-    size_t trail_whitespace{};
-
-    while (a != b) {
-        // Remove prefix from a, then remove trail from b, if nothing to remove break
-        if (*a == skip) {
-            ++prefix_whitespace;
-            ++a;
-        }
-        else if (*b == skip) {
-            +trail_whitespace;
-            --b;
-        }
-        else
-            break;
-    }
-
-    filtered.remove_prefix(prefix_whitespace);
-    filtered.remove_suffix(trail_whitespace);
-    return filtered;
+    return line.substr(start, end - begin);
 }
 
 // Now while we can parse our line and get out a "name" "type" pair strings,
@@ -1759,13 +1740,13 @@ consteval std::string_view sanitize(std::string_view line, char skip = ' ') {
 // There's no way except making our own mapping I think sadly.
 
 // ^^ is the syntax for the static reflection operator, it gets a std::meta::info from the given type
-consteval std::meta::info name_to_type(std::string_view name) {
-    if (name == "size_t")        return ^^size_t;
-    if (name == "int")           return ^^int;
-    if (t == "double")           return ^^double;
-    if (t == "float")            return ^^float;
-    if (t == "std::string_view") return ^^std::string_view;
-    throw "Unkown type, add it to mapping";
+consteval std::meta::info string_to_type(std::string_view name) {
+    if (name == "size_t") return ^^size_t;
+    if (name == "int") return ^^int;
+    if (name == "double") return ^^double;
+    if (name == "float") return ^^float;
+    if (name == "std::string_view") return ^^std::string_view;
+    throw "Unknown type, add it to mapping";
 }
 
 // Now we can parse our fields, we're going to use a consteval block here
@@ -1790,7 +1771,7 @@ consteval {
             // Could do a lot more sanitization and checking but this is more of an example prob
         }
 
-        std::meta::info type = name_to_type(sanitize(pair[0]));
+        std::meta::info type = string_to_type(sanitize(pair[1]));
 
         // Our type is the member's type... The name will be the member's identifier
         specs.push_back(data_member_spec(type, {.name = sanitize(pair[0])}));
@@ -1822,33 +1803,99 @@ template <std::meta::info Member>
 consteval auto parse_field(std::string_view field) {
     // We just make a mapping, parsing our data into a given type
 
-    // Get dealiased type of member (will explain)
+    // Get dealiased type of member
     constexpr auto T = std::meta::dealias(std::meta::type_of(Member));
 
-    if (T == std::meta::dealis(^^size_t)) return parse_size_t(field);
+    // We use deal
+    if (T == std::meta::dealias(^^size_t)) return parse_size_t(field);
     // ... support for other types delegating to its parsing function
 
     throw "Unkown type, add it to field parsing";
 }
-```
 
 // We're just going to use immediately evaluated lambdas
 // I think its the cleanest way to initialize a constexpr variable
-constexpr size_t NUM_ROWS = [](){
-// No need to -1 as trailing \n is gone
-return split(sanitize(csv, '\n'), '\n').size();
+constexpr size_t NUM_ROWS = []() {
+    return split(sanitize(csv, '\n'), '\n').size() - 1;
 }();
 
+// Now we can finally load in our data
 constexpr std::array<Row, NUM_ROWS> data = [] {
-std::array<Row, NUM_ROWS> data;
+    std::array<Row, NUM_ROWS> data;
 
     auto lines = split(sanitize(csv, '\n'), '\n');
+    constexpr auto members = std::define_static_array(
+        std::meta::nonstatic_data_members_of(^^Row, std::meta::access_context::unchecked());
+    );
+
+    for (size_t i{}; i < NUM_ROWS; ++i) {
+        auto elements = split(lines[i + 1], ','); // i + 1 since we skip the header
+
+        size_t j{};
+        template for (constexpr auto member : members) {
+            data[i].[: member :] = parse_field<member>(sanitize(fields[j]));
+            ++j;
+        }
+    }
 
     return data;
+}();
+```
 
-}()
+And we've successfully loaded in and parsed our data at compile time. And here's an example use of whats been achieved. I also have a get utility, read example.cpp in one_and_dones if you want to see how the impl works.
 
 ```
+int main() {
+    std::cout << "Row Names & Types" << '\n';
+    constexpr auto members = std::define_static_array(
+        std::meta::nonstatic_data_members_of(^^Row, std::meta::access_context::unchecked()));
+    template for (constexpr auto member : members) {
+        std::cout << std::meta::identifier_of(member) << ": "
+                  << std::meta::display_string_of(std::meta::type_of(member)) << '\n';
+    }
+
+    std::cout << "Data" << '\n';
+
+    for (const Row& row : data) {
+        template for (constexpr auto member : members) {
+            std::cout << std::meta::identifier_of(member) << ": " << row.[:member:] << ' ';
+        }
+        std::cout << '\n';
+    }
+
+    std::cout << get<"AGE">(data[2]) << '\n';
+    std::cout << data[2].AGE << '\n';
+    return 0;
+}
+```
+
+And out we get
+
+```
+Row Names & Types
+ID: unsigned long
+NUM: unsigned long
+AGE: unsigned long
+Data
+ID: 0 NUM: 5 AGE: 19
+ID: 1 NUM: 3 AGE: 23
+ID: 2 NUM: 6 AGE: 41
+ID: 3 NUM: 3 AGE: 37
+41
+41
+```
+
+With an input CSV of:
+
+```
+ID. size_t ,   NUM.size_t, AGE .size_t
+0, 5, 19
+1, 3 ,23
+2, 6, 41
+3, 3, 37
+```
+
+Note it parses the whitespace properly. 
 
 # PLANS
 
@@ -1861,4 +1908,7 @@ std::array<Row, NUM_ROWS> data;
 - different dynamic dispatch methods
 - different binary search memory layouts
 - simd binary search
+
+```
+
 ```
