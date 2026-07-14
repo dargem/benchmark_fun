@@ -1732,7 +1732,7 @@ consteval std::string_view sanitize(std::string_view line, char skip = ' ') {
     for (; start < end && line[start] == skip; ++start);
     for (; start < end && line[end - 1] == skip; --end);\
 
-    return line.substr(start, end - begin);
+    return line.substr(start, end - start);
 }
 
 // Now while we can parse our line and get out a "name" "type" pair strings,
@@ -1825,7 +1825,7 @@ constexpr std::array<Row, NUM_ROWS> data = [] {
 
     auto lines = split(sanitize(csv, '\n'), '\n');
     constexpr auto members = std::define_static_array(
-        std::meta::nonstatic_data_members_of(^^Row, std::meta::access_context::unchecked());
+        std::meta::nonstatic_data_members_of(^^Row, std::meta::access_context::unchecked())
     );
 
     for (size_t i{}; i < NUM_ROWS; ++i) {
@@ -1833,7 +1833,7 @@ constexpr std::array<Row, NUM_ROWS> data = [] {
 
         size_t j{};
         template for (constexpr auto member : members) {
-            data[i].[: member :] = parse_field<member>(sanitize(fields[j]));
+            data[i].[: member :] = parse_field<member>(sanitize(elements[j]));
             ++j;
         }
     }
@@ -1895,7 +1895,7 @@ ID. size_t ,   NUM.size_t, AGE .size_t
 3, 3, 37
 ```
 
-Note it parses the whitespace properly. 
+And we have deserialized the CSV at compile time.
 
 # PLANS
 
