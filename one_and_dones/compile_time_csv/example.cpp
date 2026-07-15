@@ -181,3 +181,5 @@ int main() {
     std::cout << data[2].AGE << '\n';
     return 0;
 }
+
+// ~/clang-p2996/build/bin/clang++ -std=c++26 -freflection-latest example.cpp example.csv

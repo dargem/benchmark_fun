@@ -24,6 +24,8 @@ It also contains information on various performance-related C++ language feature
 
 - [Small String Optimization (SSO)](#sso)
 
+- [C++26 Compile Time CSV deserialization](#c26-compile-time-csv-parser)
+
 - [Reserving 15 GB Of Capacity For A Vector](#reserving-15-gb-of-capacity-for-a-vector)
 
 - [Costs & Dangers Of Unaligned Access](#costs-and-dangers-of-unaligned-access)
@@ -546,9 +548,29 @@ while (!write_idx.compare_exchange_weak(expected, next, std::memory_order_releas
 
 Consider the "retry" loop for each thread. It has reserved an idx and wants to check if it can publish its operation to "finish" it. Each thread is going to be using CAS instructions to poll the same shared idx. Since the CAS instruction is going to try to write to the idx, each thread needs the cacheline under exclusive or modified state. This of course is going to result in many threads "fighting" over ownership of idx's cacheline, resulting in less chance the thread that actually needs the idx gets it. All the while these RFO's are causing tons of delays and making the cache ping pong between cores. As threads increase cache coherence traffic is going to explode which is what we see from the 47x slowdown. With lower contention like 2 pusher / 2 writers slower than a mutex but not by a significant margin. Its interesting we've managed to make a lock free MPMC that scales worse than a locked one.
 
-A solution around this is to change the "publishing" step so that it doesn't need any kind of synchronization between threads. One way to do this is through adding some metadata like a bool flag to an element. If the flag is false, we can write to the data. If the flag is true the data has been written to. Reading from the data sets it back to false so someone else can read from it. We use the same reserved_idx idea to ensure only we can write to this data. Once our write is done, rather than trying to advance a write_idx we just set the flag to true. Now a reader simply checks the reserved read_idx,
+A solution around this is to change the "publishing" step so that it doesn't need any kind of synchronization between threads. One way to do this is through adding some metadata to each element stored. This will cover a vyukov slot design. The idea is we still use a circular ring buffer. We have a shared enqueue_pos and dequeue_pos, for this the pos will always be increasing as we do our enqueue and dequeue ops. To access the respective slot in the buffer, we & it by a mask of its lower n digits. E.g.
 
-If this flag is true, we have written to the data, and if its false it hasn't been written to.
+```
+To wrap around enqueue_pos to index's 0 - 255 we could mod by 256 but that could be slow.
+Rather we can just & it with a bitmask of all 0's expect with the last 8 binary digits being 1.
+
+100000001 (idx without wraparound)
+&
+011111111 (mask to wrap it)
+Wraps to 1 without needing a slow modulus operation. The compiler may optimize the modulo away itself if you template the queue with size and the size is a multiple of 2.
+```
+
+Now for the metadata, we initialize each slot with a sequence like that.
+
+```
+struct Slot {
+    alignas(std::hardware_destructive_interference_size) std::atomic<size_t> sequence{0};
+    int value;
+};
+```
+
+Note we align it to a cacheline so that if we are writing to N and N+1 simultaneously they're on different cache lines so there's no false sharing issues.
+
 
 # SSO
 

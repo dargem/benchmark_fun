@@ -1,6 +1,7 @@
 #pragma once
 #include <atomic>
 #include <cassert>
+#include <new>
 #include <string_view>
 #include <vector>
 
@@ -8,7 +9,7 @@ namespace benchmarks {
 
 namespace VyukovSlot {
 struct Slot {
-    alignas(64) std::atomic<size_t> sequence{0};
+    alignas(std::hardware_destructive_interference_size) std::atomic<size_t> sequence{0};
     int value;
 };
 }  // namespace VyukovSlot
